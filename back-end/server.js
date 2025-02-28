@@ -1,18 +1,15 @@
-const express = require('express');
-const path = require('path');
-const bodyParser = require("body-parser");
+const express = require("express");
+const path = require("path");
 
-const app = express()
+const app = express();
 const PORT = 8080;
-    
-app.use(bodyParser.json());
 
-app.use(express.static(__dirname));
+app.use(express.static(path.resolve(__dirname, "../front-end")));
 
 app.get("/home", (req, res) => {
-    res.sendFile(path.join(__dirname, "index.html"));
+    res.sendFile(path.resolve(__dirname, "../front-end/index.html"));
 });
 
-app.listen(PORT, ()=> console.log("Server is listening on http://localhost:8080"));
-
-
+app.listen(PORT, () => {
+    console.log(`Server is running at http://localhost:${PORT}`);
+});
