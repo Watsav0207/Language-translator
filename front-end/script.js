@@ -10,3 +10,5 @@ function translateText() {
         document.getElementById("translated-text").value = "Still Working on it :P";
     }, 1000);
 }
+
+
