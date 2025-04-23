@@ -4,5 +4,5 @@ preprocessing.ipynb
 spmodel.vocab
 your_corpus.txt
 spmodel.model
-'~$preprocessed_english_telugu_dataset.xlsx'
 script.py
+back-end/~$preprocessed_english_telugu_dataset.xlsx

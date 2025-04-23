@@ -1,28 +1,60 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Language Translator</title>
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
+
     <div class="container">
         <h1>Language Translator</h1>
-        <p>Enter an English sentence and get its Telugu translation.</p>
         
         <div class="input-container">
-            <!-- This is the text area that script.js takes from -->
+            
                 <textarea id="text-input" placeholder="Type in English..."></textarea> 
-            <button onclick="translateText()">Translate</button>
-        </div>
+                <button onclick="startTranslation()"> Translate</button>
+            </div>
 
         <h3>Translated Sentence:</h3>
         <div class="output-container">
-            <textarea id="translated-text" placeholder="Telugu translation will appear here..." readonly></textarea>
+            <textarea id="translated-text" placeholder="Telugu translation....." readonly></textarea>
         </div>
     </div>
 
-    <script src="script.js"></script>
+
+    <script>
+        function startTranslation() {
+            const englishText = document.getElementById('text-input').value.trim();
+            if (!englishText) return;
+    
+            const teluguTranslation = "అనువాదం ఇక్కడ కనిపిస్తుంది...";
+    
+            typeWriterEffect(teluguTranslation);
+        }
+    
+        function typeWriterEffect(text) {
+            const output = document.getElementById('translated-text');
+            output.value = '';
+            let i = 0;
+            const speed = 50;
+    
+            function type() {
+                if (i < text.length) {
+                    output.value += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                }
+            }
+    
+            type();
+        }
+    
+    </script>
+    
+    
+    
 </body>
 </html>
