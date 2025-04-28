@@ -11,7 +11,7 @@ const PORT = 8081;
 let count = 1
 
 const limiter = rateLimit({
-	windowMs: 1 * 60 * 1000,
+ 	windowMs: 1 * 60 * 1000,
 	max: 100,
     message: "Please try again later! Too many requests."
 });
@@ -27,6 +27,13 @@ app.get("/home",(req, res) => {
     count += 1
     console.log("User Connected:",ipAdrr, req.socket.remotePort)
     res.sendFile(path.resolve(__dirname, "../front-end/index.html"));
+});
+
+
+app.get("/login", (req, res) =>{
+
+    res.sendFile(path.resolve(__dirname, "../front-end/login.html"))
+
 });
 
 app.get("/count", (req,res)=>{
