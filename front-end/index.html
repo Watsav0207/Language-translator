@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Language Translator</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 
@@ -34,47 +34,12 @@
         <div class="output-container">
             <textarea id="translated-text" placeholder="Telugu translation..." readonly></textarea>
             <div class="action-btns">
-                <button class="action-btn"><i class="fas fa-volume-up"></i></button>
                 <button class="action-btn"><i class="fas fa-copy"></i></button>
                 <button class="action-btn"><i class="fas fa-bookmark"></i></button>
             </div>
         </div>
     </div>
 
-    <script>
-        function startTranslation() {
-            const englishText = document.getElementById('text-input').value.trim();
-            if (!englishText) return;
-    
-            const teluguTranslation = "అనువాదం ఇక్కడ కనిపిస్తుంది...";
-            typeWriterEffect(teluguTranslation);
-        }
-    
-        function typeWriterEffect(text) {
-            const output = document.getElementById('translated-text');
-            output.value = '';
-            let i = 0;
-            const speed = 50;
-    
-            function type() {
-                if (i < text.length) {
-                    output.value += text.charAt(i);
-                    i++;
-                    setTimeout(type, speed);
-                }
-            }
-    
-            type();
-        }
-
-        document.querySelectorAll('.nav-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                document.querySelectorAll('.nav-btn').forEach(btn => {
-                    btn.classList.remove('active');
-                });
-                this.classList.add('active');
-            });
-        });
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
