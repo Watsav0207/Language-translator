@@ -56,6 +56,10 @@ body::before {
     z-index: 100;
 }
 
+.login-header {
+    justify-content: flex-start;
+}
+
 .logo-section {
     display: flex;
     align-items: center;
@@ -115,6 +119,11 @@ body::before {
     border: 2px solid #ffcc00;
     margin-top: 80px;
     z-index: 1;
+}
+
+.login-container {
+    max-width: 450px;
+    margin-top: 120px;
 }
 
 h1 {
@@ -205,6 +214,83 @@ button:hover {
     letter-spacing: 0.5px;
 }
 
+/* Login Form Styling */
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+}
+
+.input-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid #333;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.input-field i {
+    position: absolute;
+    left: 15px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 16px;
+}
+
+.input-field input {
+    width: 100%;
+    padding: 16px 16px 16px 45px;
+    background: transparent;
+    border: none;
+    color: #f0f0f0;
+    font-size: 15px;
+}
+
+.input-field input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.password-wrapper {
+    position: relative;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: rgba(255, 204, 0, 0.7);
+    transition: all 0.3s ease;
+    z-index: 2;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+.toggle-password:hover {
+    color: #ffcc00;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.login-btn {
+    margin-top: 10px;
+}
+
+.error {
+    color: #ff6b6b;
+    font-size: 14px;
+    text-align: center;
+    min-height: 20px;
+}
+
 @media (max-width: 768px) {
     .page-header {
         flex-direction: column;
@@ -216,6 +302,10 @@ button:hover {
         width: 92%;
         padding: 30px;
         margin-top: 60px;
+    }
+
+    .login-container {
+        margin-top: 30px;
     }
 }
 
@@ -237,29 +327,4 @@ button:hover {
     h1 {
         font-size: 22px;
     }
-}
-
-.password-container {
-    position: relative;
-    width: 100%;
-}
-
-.password-container input {
-    width: 100%;
-    padding-right: 45px; /* Space for the eye icon */
-}
-
-.toggle-password {
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    cursor: pointer;
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 18px;
-    transition: color 0.3s ease;
-}
-
-.toggle-password:hover {
-    color: #ffcc00;
 }
