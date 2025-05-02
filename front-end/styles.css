@@ -328,3 +328,38 @@ button:hover {
         font-size: 22px;
     }
 }
+
+.signup-redirect {
+    margin-top: 15px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
+    text-align: center;
+}
+
+.signup-redirect a {
+    color: #ffcc00;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.signup-redirect a:hover {
+    color: #ffe066;
+}
+
+.signup-redirect {
+    margin-top: 15px;
+    font-size: 14px;
+    color: #ccc;
+}
+
+.signup-redirect a {
+    color: #ffcc00;
+    text-decoration: none;
+    margin-left: 5px;
+    font-weight: 600;
+}
+
+.signup-redirect a:hover {
+    text-decoration: underline;
+}
