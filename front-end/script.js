@@ -1,6 +1,3 @@
-// ==================== AUTH FUNCTIONS ====================
-
-// Login validation
 function validateLogin() {
   const username = document.getElementById("username").value.trim();
   const password = document.getElementById("password").value.trim();
@@ -11,11 +8,29 @@ function validateLogin() {
     return false;
   }
 
-  window.location.href = "index.html";
+  fetch("/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  })
+    .then(res => {
+      if (res.ok) return res.json();
+      return res.json().then(data => { throw new Error(data.message); });
+    })
+    .then(() => {
+      window.location.href = "/home";
+    })
+    .catch(err => {
+      errorMsg.textContent = err.message || "Login failed.";
+    });
+
   return false;
 }
 
-// Sign-up validation
+function Translate(){
+
+}
+
 function validateSignup() {
   const username = document.getElementById("new-username").value.trim();
   const password = document.getElementById("new-password").value.trim();
@@ -26,12 +41,54 @@ function validateSignup() {
     return false;
   }
 
-  alert("Account created! You can now log in.");
-  window.location.href = "login.html";
+  if(username.length < 6 && username.length > 15){
+    errorMsg.textContent = "Username length should be between 6 and 15";
+    return false;
+  }
+
+  const isValidPassword = /^(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,16}$/.test(password);
+
+    if(!isValidPassword) {
+      errorMsg.textContent = "Password must be 8-16 characters long, include a number and a special character.";
+      return false;
+    }
+  
+  fetch("/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  })
+    .then(res => {
+      if (res.ok) return res.json();
+      return res.json().then(data => { throw new Error(data.message); });
+    })
+    .then(() => {
+      const successMsg = document.createElement("div");
+      successMsg.classList.add("success-message");
+      successMsg.textContent = "Account created! Redirecting to login...";
+      successMsg.classList.add("success");
+      document.querySelector(".login-container").appendChild(successMsg);
+      setTimeout(() => window.location.href = "/login", 2000);
+    })
+    .catch(err => {
+      errorMsg.textContent = err.message || "Signup failed.";
+    });
+
   return false;
 }
 
-// Toggle password visibility
+function logout() {
+  fetch("/logout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  })
+    .then(() => {
+      window.location.href = "/login";
+    })
+    .catch(err => console.error("Logout failed:", err));
+}
+
+//eye icon to show or hide the password
 function togglePassword(inputId = "password", iconContainer = null) {
   const passwordField = document.getElementById(inputId);
   const icon = iconContainer ? iconContainer.querySelector("i") : document.querySelector(".toggle-password i");
@@ -45,63 +102,28 @@ function togglePassword(inputId = "password", iconContainer = null) {
   }
 }
 
-// ==================== TRANSLATOR CORE ====================
-
-function startTranslation() {
-  const englishText = document.getElementById('text-input').value.trim();
-  if (!englishText) return;
-
-  const teluguTranslation = "అనువాదం ఇక్కడ కనిపిస్తుంది...";
-  typeWriterEffect(teluguTranslation);
+function initializeTheme() {
+  const themeToggle = document.createElement('button');
+  themeToggle.className = 'theme-toggle';
+  themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+  themeToggle.id = 'theme-toggle';
+  
+  const header = document.querySelector('.page-header');
+  if (header) {
+      header.appendChild(themeToggle);
+      
+      const currentTheme = localStorage.getItem('theme') || 'dark';
+      if (currentTheme === 'light') {
+          document.body.classList.add('light-theme');
+          themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+      }
+      
+      themeToggle.addEventListener('click', () => {
+          document.body.classList.toggle('light-theme');
+          const isLight = document.body.classList.contains('light-theme');
+          localStorage.setItem('theme', isLight ? 'light' : 'dark');
+          themeToggle.innerHTML = isLight ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+      });
+  }
 }
-
-function typeWriterEffect(text) {
-  const output = document.getElementById('translated-text');
-  if (!output) return;
-
-  output.value = '';
-  let i = 0;
-  const speed = 50;
-
-  function type() {
-    if (i < text.length) {
-      output.value += text.charAt(i);
-      i++;
-      setTimeout(type, speed);
-    }
-  }
-
-  type();
-}
-
-// ==================== UI + NAVIGATION ====================
-
-document.addEventListener('DOMContentLoaded', function() {
-  // Nav button highlight
-  const navButtons = document.querySelectorAll('.nav-btn');
-  navButtons.forEach(button => {
-    button.addEventListener('click', function() {
-      navButtons.forEach(btn => btn.classList.remove('active'));
-      this.classList.add('active');
-    });
-  });
-
-  // Word counter for translation input
-  const textInput = document.getElementById('text-input');
-  if (textInput) {
-    textInput.addEventListener('input', function() {
-      const text = this.value.trim();
-      const wordCount = text ? text.split(/\s+/).length : 0;
-      const wordCountEl = document.querySelector('.language-label .word-count');
-      if (wordCountEl) wordCountEl.textContent = `${wordCount} words`;
-    });
-  }
-
-  // Placeholder for translation history
-  const historyBtn = document.querySelector('.nav-btn:nth-child(2)');
-  if (historyBtn) {
-    historyBtn.addEventListener('click', function() {
-      console.log('History button clicked');
-    });
-  }
-});
+document.addEventListener('DOMContentLoaded', initializeTheme);
