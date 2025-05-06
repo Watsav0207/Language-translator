@@ -24,11 +24,17 @@ mongoose.connect(MONGO_URL)
   });
 
 
-const UserSchema = new mongoose.Schema({
-  username: String,
-  password: String,
-});
-
+  const UserSchema = new mongoose.Schema({
+    username: String,
+    password: String,
+    translations: [
+      {
+        english: { type: String, required: true },
+        telugu: { type: String, required: true }
+      }
+    ]
+  });
+  
 const User = mongoose.model("users", UserSchema);
 
 app.use(cookieParser());
@@ -41,7 +47,6 @@ app.use(
       maxAge: 1000 * 60 * 60
 
      },
-
   })
 );
 
@@ -65,13 +70,20 @@ function isAuthenticated(req, res, next) {
   res.redirect("/login");
 }
 
+app.get("/", (req,res)=>{
+   return res.redirect("/login")
 
-app.get(["/login"],(req, res) => {
+});
+
+
+app.get("/login",(req, res) => {
   if (req.session.user)
     return res.redirect("/home")
-  
+
   res.sendFile(path.resolve(__dirname, "../front-end/login.html"));
 });
+
+
 
 app.get("/signup", (req, res) => {
     
@@ -80,6 +92,8 @@ app.get("/signup", (req, res) => {
     } 
   res.sendFile(path.resolve(__dirname, "../front-end/signup.html"));
 });
+
+
 
 app.post("/signup", async (req, res) => {
     const { username, password } = req.body;
@@ -100,23 +114,112 @@ app.post("/signup", async (req, res) => {
   
   });
 
+
   app.post("/login", async (req, res) => {
+
     const { username, password } = req.body;
+  
+    if (!username || !password) {
+      return res.status(400).json({ message: "Username and password are required." });
+    }
   
     try {
       const user = await User.findOne({ username });
   
       if (user && await bcrypt.compare(password, user.password)) {
+
         req.session.user = { username };
+
         return res.json({ message: "Login successful" });
+
       } else {
         return res.status(401).json({ message: "Invalid username or password" });
       }
+    }
+     catch (err) {
+      console.error("Error during login:", err);
+      res.status(500).json({ message: "Server error during login" });
+    }
+
+  });
+
+
+
+  app.post("/save-translation", isAuthenticated, async (req, res) => {
+    const { english, telugu } = req.body;
+    const username = req.session.user.username;
+  
+    try {
+      const user = await User.findOne({ username });
+  
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const exists = user.translations.some(
+        (t) => t.english === english || t.telugu === telugu
+      );
+  
+      if (exists) {
+        return res.status(200).end();
+      }
+  
+      user.translations.unshift({ english, telugu });
+  
+      if (user.translations.length > 5) {
+        user.translations.pop();
+      }
+  
+      await user.save();
+      res.status(200).json({ message: "Translation saved successfully" });
     } catch (err) {
-      res.status(500).json({ message: "Server error during login." });
+      console.error("Error saving translation:", err);
+      res.status(500).json({ message: "Server error while saving translation" });
+    }
+
+
+  });
+  
+  app.get('/current-user', (req, res) => {
+    if (req.session.user) {
+      res.json({ username: req.session.user.username });
+    } else {
+      res.json({ username: null });
     }
   });
   
+  app.post('/logout', (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Error logging out" });
+      }
+  
+      res.clearCookie('connect.sid'); 
+  
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+  
+  
+app.get("/history", isAuthenticated, async (req, res) => {
+  const username = req.session.user.username;
+
+  try {
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const lastFiveTranslations = user.translations.slice(0, 5);
+
+    res.json({ translations: lastFiveTranslations });
+  } catch (err) {
+    console.error("Error fetching history:", err);
+    res.status(500).json({ message: "Server error while fetching history" });
+  }
+  
+});
+
 app.get("/home", isAuthenticated, (req, res) => {
   res.sendFile(path.resolve(__dirname, "../front-end/index.html"));
 });

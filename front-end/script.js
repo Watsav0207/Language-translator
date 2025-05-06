@@ -27,6 +27,7 @@ function validateLogin() {
   return false;
 }
 
+
 function validateSignup() {
   const username = document.getElementById("new-username").value.trim();
   const password = document.getElementById("new-password").value.trim();
@@ -113,3 +114,120 @@ function initializeTheme() {
   }
 }
 document.addEventListener('DOMContentLoaded', initializeTheme);
+
+
+
+
+//this function is called after text is translated to store in mongodb
+function saveTranslation(english, telugu) {
+  fetch('/save-translation', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ english, telugu })
+  })
+  .catch(error => {
+    console.error('Error saving translation:', error);
+  });
+}
+
+
+function showTranslationHistory() {
+
+  let historyModal = document.getElementById('history-modal');
+  
+  if (!historyModal) {
+    historyModal = document.createElement('div');
+    historyModal.id = 'history-modal';
+    historyModal.className = 'modal';
+    
+    historyModal.innerHTML = `
+      <div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h2>Translation History</h2>
+        <div id="history-list"></div>
+      </div>
+    `;
+    
+    document.body.appendChild(historyModal);
+    
+    historyModal.querySelector('.close-btn').addEventListener('click', () => {
+      historyModal.style.display = 'none';
+    });
+
+    window.addEventListener('click', (event) => {
+      if (event.target === historyModal) {
+        historyModal.style.display = 'none';
+      }
+    });
+  }
+  
+  fetch('/history')
+    .then(response => response.json())
+    .then(data => {
+      const historyList = document.getElementById('history-list');
+      historyList.innerHTML = '';
+      
+      if (data.translations && data.translations.length > 0) {
+        data.translations.forEach((item, index) => {
+          const historyItem = document.createElement('div');
+          historyItem.className = 'history-item';
+          historyItem.innerHTML = `
+            <div class="history-entry">
+              <p><strong>English:</strong> ${item.english}</p>
+              <p><strong>Telugu:</strong> ${item.telugu}</p>
+            </div>
+            <div class="history-actions">
+              <button class="use-btn" data-index="${index}">Use</button>
+            </div>
+          `;
+          historyList.appendChild(historyItem);
+          historyItem.querySelector('.use-btn').addEventListener('click', () => {
+            document.getElementById('text-input').value = item.english;
+            document.getElementById('translated-text').value = item.telugu;
+            historyModal.style.display = 'none';
+          });
+        });
+      } else {
+        historyList.innerHTML = '<p>No translation history found.</p>';
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching history:', error);
+      document.getElementById('history-list').innerHTML = '<p>Error loading translation history.</p>';
+    });
+  
+  historyModal.style.display = 'block';
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  const historyBtn = document.querySelector('.nav-btn:nth-child(2)');
+  if (historyBtn) {
+    historyBtn.addEventListener('click', showTranslationHistory);
+  }
+  
+  const translateBtn = document.getElementById('translate-btn');
+  if (translateBtn) {
+
+    const oldHandler = translateBtn.onclick;
+    translateBtn.onclick = function() {
+      if (oldHandler) {
+        oldHandler.call(this);
+      } else {
+        startTranslation();
+      }
+      
+
+      setTimeout(() => {
+        const english = document.getElementById('text-input').value;
+        const telugu = document.getElementById('translated-text').value;
+        
+        if (english && telugu) {
+          saveTranslation(english, telugu);
+        }
+      }, 1000);
+    };
+  }
+});
