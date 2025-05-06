@@ -29,7 +29,6 @@ const UserSchema = new mongoose.Schema({
   password: String,
 });
 
-
 const User = mongoose.model("users", UserSchema);
 
 app.use(cookieParser());
@@ -51,7 +50,7 @@ app.use(express.static(path.resolve(__dirname, "../front-end")));
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 100, 
-    message: "Too many requests from this IP, please try again after 15 minutes",
+    message: "Too many requests from this IP, please try again later.",
   });
   
 
@@ -91,6 +90,7 @@ app.post("/signup", async (req, res) => {
     } catch (err) {
       res.status(500).json({ message: "Server error during signup." });
     }
+  
   });
 
   app.post("/login", async (req, res) => {
@@ -109,8 +109,6 @@ app.post("/signup", async (req, res) => {
       res.status(500).json({ message: "Server error during login." });
     }
   });
-
-  
   
 app.get("/home", isAuthenticated, (req, res) => {
   res.sendFile(path.resolve(__dirname, "../front-end/index.html"));
@@ -125,4 +123,5 @@ app.post("/logout", (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);
+
 });

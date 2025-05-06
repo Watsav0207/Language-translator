@@ -19,6 +19,11 @@
             <button class="nav-btn active"><i class="fas fa-home"></i> Home</button>
             <button class="nav-btn"><i class="fas fa-history"></i> History</button>
             <button class="nav-btn"><i class="fas fa-bookmark"></i> Saved</button>
+
+            <!-- 🌗 Theme Toggle Button (added) -->
+            <button class="nav-btn" id="themeToggleBtn" title="Toggle Theme">
+                <i class="fas fa-moon"></i>
+            </button>
         </nav>
     </header>
 
@@ -27,19 +32,77 @@
         
         <div class="input-container">
             <textarea id="text-input" placeholder="Type in English..."></textarea> 
-            <button onclick="startTranslation()">Translate</button>
+            <button id="translate-btn">Translate</button>
         </div>
 
         <h3>Translated Sentence:</h3>
         <div class="output-container">
             <textarea id="translated-text" placeholder="Telugu translation..." readonly></textarea>
             <div class="action-btns">
-                <button class="action-btn"><i class="fas fa-copy"></i></button>
-                <button class="action-btn"><i class="fas fa-bookmark"></i></button>
+                <button class="action-btn" id="copy-btn"><i class="fas fa-copy"></i></button>
+                <button class="action-btn" id="bookmark-btn"><i class="fas fa-bookmark"></i></button>
             </div>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script>
+        function startTranslation() {
+            const sentence = document.getElementById("text-input").value;
+
+            const data = {
+                sentence: sentence
+            };
+
+            fetch('https://749c-34-145-245-234.ngrok-free.app/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log('Translation Result:', result.processed_sentence);
+                document.getElementById('translated-text').value = result.processed_sentence;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('translate-btn').addEventListener('click', startTranslation);
+            
+            document.getElementById('copy-btn').addEventListener('click', () => {
+                const translatedText = document.getElementById('translated-text');
+                translatedText.select();
+                document.execCommand("copy");
+            });
+
+            document.getElementById('bookmark-btn').addEventListener('click', () => {
+                console.log("Bookmarked: " + document.getElementById('translated-text').value);
+            });
+
+            // 🌗 Theme Toggle Script
+            const toggleBtn = document.getElementById("themeToggleBtn");
+            const icon = toggleBtn.querySelector("i");
+
+            if (localStorage.getItem("theme") === "light") {
+                document.body.classList.add("light-theme");
+                icon.classList.remove("fa-moon");
+                icon.classList.add("fa-sun");
+            }
+
+            toggleBtn.addEventListener("click", () => {
+                document.body.classList.toggle("light-theme");
+                const isLight = document.body.classList.contains("light-theme");
+
+                icon.classList.toggle("fa-moon", !isLight);
+                icon.classList.toggle("fa-sun", isLight);
+
+                localStorage.setItem("theme", isLight ? "light" : "dark");
+            });
+        });
+    </script>
 </body>
 </html>
