@@ -19,7 +19,6 @@
       <button class="nav-btn" id="history-btn"><i class="fas fa-history"></i> History</button>
       <button class="nav-btn"><i class="fas fa-bookmark"></i> Saved</button>
       <button class="nav-btn" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Log Out</button>
-
     </nav>
   </header>
 
@@ -50,35 +49,48 @@
 
   <script src="script.js"></script>
   <script>
+    //function to be called when user clicks on translate button.
     function startTranslation() {
+
+      // Get the text that the user entered
       const inputText = document.getElementById("text-input").value;
+
+      // Split the input into multiple lines to get multiline output
       const inputLines = inputText.split('\n');
       const promises = [];
 
+      // Loop through each line and send it to the backend for translation
       for (const line of inputLines) {
         if (line.trim() === '') {
-          promises.push(Promise.resolve(''));
+          promises.push(Promise.resolve('')); // Skip empty lines
         } else {
           const data = { sentence: line };
 
+          // Fetch request to send data to the backend for translation
           const promise = fetch('https://476a-34-55-101-151.ngrok-free.app/process', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
           })
+          // Get the translated sentence back from the server
           .then(response => response.json())
           .then(result => result.processed_sentence);
 
-          promises.push(promise);
+          promises.push(promise); // Add the promise to the list of promises
         }
       }
 
+      // Wait for all translations to complete
       Promise.all(promises)
         .then(translatedLines => {
+
           const translatedText = translatedLines.join('\n');
+
+          // Set the translated text to the output textarea
           document.getElementById('translated-text').value = translatedText;
 
-          // Save translation to backend
+          // If both original and translated texts are not empty, save them to the backend
+
           if (inputText.trim() && translatedText.trim()) {
             fetch('/save-translation', {
               method: 'POST',
@@ -87,28 +99,32 @@
                 english: inputText,
                 telugu: translatedText
               })
-            }).catch(err => console.error('Error saving translation:', err));
+            }).catch(err => console.error('Error saving translation:', err)); 
           }
         })
         .catch(error => {
-          console.error('Translation Error:', error);
+          console.error('Translation Error:', error); // Handle any errors that occur during the translation process
         });
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+
+      // When the page is loaded, add event listeners to buttons
       document.getElementById('translate-btn').addEventListener('click', startTranslation);
 
+      // Copy translated text to clipboard when copy button is clicked
       document.getElementById('copy-btn').addEventListener('click', () => {
         const translatedText = document.getElementById('translated-text');
         translatedText.select();
-        document.execCommand("copy");
+        document.execCommand("copy"); 
       });
 
+      // Log the translation when bookmark button is clicked
       document.getElementById('bookmark-btn').addEventListener('click', () => {
         console.log("Bookmarked: " + document.getElementById('translated-text').value);
       });
 
-      //fetching the username from session to display username
+      // Fetch and display the current user's username when the page loads
       fetch('/current-user')
         .then(response => response.json())
         .then(data => {
@@ -120,12 +136,13 @@
           console.error('Error fetching user info:', error);
         });
 
+      // Log the user out when the logout button is clicked
       document.getElementById('logout-btn').addEventListener('click', () => {
         fetch('/logout', { method: 'POST' })
           .then(response => response.json())
           .then(data => {
             if (data.message === "Logged out successfully") {
-              window.location.href = '/login';
+              window.location.href = '/login'; 
             }
           })
           .catch(error => {
@@ -133,19 +150,22 @@
           });
       });
 
-      // Handle History button click
+      //handling of history
       document.getElementById('history-btn').addEventListener('click', () => {
         fetch('/history')
           .then(response => response.json())
           .then(data => {
             if (data.translations && data.translations.length > 0) {
               const historyList = document.getElementById('history-list');
-              historyList.innerHTML = '';
+              historyList.innerHTML = ''; // Clear previous history
+              // Loop through each translation and display it in the history modal
               data.translations.forEach(translation => {
                 const listItem = document.createElement('li');
                 listItem.innerHTML = `<strong>English:</strong> ${translation.english} <br> <strong>Telugu:</strong> ${translation.telugu}`;
                 historyList.appendChild(listItem);
               });
+        
+
               document.getElementById('history-modal').style.display = 'block';
             }
           })
@@ -154,10 +174,12 @@
           });
       });
 
+      // Close the history modal when the close button is clicked
       document.getElementById('close-history').addEventListener('click', () => {
         document.getElementById('history-modal').style.display = 'none';
       });
 
+      // Close the modal if the user clicks outside of it
       window.addEventListener('click', (event) => {
         if (event.target === document.getElementById('history-modal')) {
           document.getElementById('history-modal').style.display = 'none';
