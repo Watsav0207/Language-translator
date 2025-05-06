@@ -27,10 +27,6 @@ function validateLogin() {
   return false;
 }
 
-function Translate(){
-
-}
-
 function validateSignup() {
   const username = document.getElementById("new-username").value.trim();
   const password = document.getElementById("new-password").value.trim();
@@ -77,16 +73,6 @@ function validateSignup() {
   return false;
 }
 
-function logout() {
-  fetch("/logout", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-  })
-    .then(() => {
-      window.location.href = "/login";
-    })
-    .catch(err => console.error("Logout failed:", err));
-}
 
 //eye icon to show or hide the password
 function togglePassword(inputId = "password", iconContainer = null) {

@@ -37,7 +37,11 @@ app.use(
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false },
+    cookie: { secure: false,
+      maxAge: 1000 * 60 * 60
+
+     },
+
   })
 );
 
@@ -62,7 +66,10 @@ function isAuthenticated(req, res, next) {
 }
 
 
-app.get(["/login", "/"], (req, res) => {
+app.get(["/login"],(req, res) => {
+  if (req.session.user)
+    return res.redirect("/home")
+  
   res.sendFile(path.resolve(__dirname, "../front-end/login.html"));
 });
 
@@ -112,13 +119,6 @@ app.post("/signup", async (req, res) => {
   
 app.get("/home", isAuthenticated, (req, res) => {
   res.sendFile(path.resolve(__dirname, "../front-end/index.html"));
-});
-
-app.post("/logout", (req, res) => {
-  req.session.destroy((err) => {
-    if (err) return res.status(500).json({ message: "Failed to log out" });
-    res.redirect("/login");
-  });
 });
 
 app.listen(PORT, () => {
