@@ -42,7 +42,7 @@ function validateSignup() {
     return false;
   }
 
-  const isValidPassword = /^(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,16}$/.test(password);
+  const isValidPassword = /^(?=.[0-9])(?=.[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,16}$/.test(password);
 
   if(!isValidPassword) {
     errorMsg.textContent = "Password must be 8-16 characters long, include a number and a special character.";

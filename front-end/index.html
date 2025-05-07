@@ -17,7 +17,8 @@
       <h1 class="site-title">EnTel</h1>
     </div>
     <nav class="main-nav">
-      <span id="username-display" class="username-display"></span>
+      <!-- Username display here -->
+      <span id="username-display" class="username-display">Loading...</span>
       <button class="nav-btn" id="history-btn">
         <i class="fas fa-history"></i> History
       </button>
@@ -79,7 +80,7 @@
         } else {
           const data = { sentence: line };
           const promise = fetch(
-            "https://53e1-34-72-178-152.ngrok-free.app/process",
+            "https://5f70-35-187-158-72.ngrok-free.app/process",
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -139,7 +140,11 @@
           if (data.username) {
             document.getElementById(
               "username-display"
-            ).textContent = `Welcome, ${data.username}`;
+            ).textContent = `Hello, ${data.username}`;
+          } else {
+            document.getElementById(
+              "username-display"
+            ).textContent = "Hello, Guest";
           }
         })
         .catch((error) => {
@@ -188,15 +193,13 @@
           });
       });
 
-      //delete his
+      //delete history
       document.getElementById("delete-history-btn").addEventListener("click", () => {
         fetch("/delete-history", { method: "DELETE" })
           .then((response) => response.json())
           .then((data) => {
             if (data.message === "History deleted successfully") {
-              document.getElementById("h
-              istory-list").innerHTML = "";
-              
+              document.getElementById("history-list").innerHTML = "";
               document.getElementById("history-modal").style.display = "none";
             }
           })
