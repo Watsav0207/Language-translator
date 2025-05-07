@@ -618,3 +618,21 @@ right: 10px;
 #history-list li {
 margin-bottom: 10px;
 }
+
+#delete-history-btn {
+  width: 100%;
+  padding: 12px 20px;
+  font-size: 18px;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: center;
+  display: block; 
+  margin-top: 20px; 
+}
+
+#delete-history-btn:hover {
+  background-color: #d32f2f; 
+}

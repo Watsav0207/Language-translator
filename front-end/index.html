@@ -2,23 +2,31 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Language Translator</title>
   <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+  />
 </head>
-
 <body>
   <header class="page-header">
     <div class="logo-section">
-      <img src="images/logo.png" alt="Logo" class="site-logo"/>
+      <img src="images/logo.png" alt="Logo" class="site-logo" />
       <h1 class="site-title">EnTel</h1>
     </div>
     <nav class="main-nav">
       <span id="username-display" class="username-display"></span>
-      <button class="nav-btn" id="history-btn"><i class="fas fa-history"></i> History</button>
-      <button class="nav-btn"><i class="fas fa-bookmark"></i> Saved</button>
-      <button class="nav-btn" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Log Out</button>
+      <button class="nav-btn" id="history-btn">
+        <i class="fas fa-history"></i> History
+      </button>
+      <button class="nav-btn">
+        <i class="fas fa-bookmark"></i> Saved
+      </button>
+      <button class="nav-btn" id="logout-btn">
+        <i class="fas fa-sign-out-alt"></i> Log Out
+      </button>
     </nav>
   </header>
 
@@ -31,10 +39,18 @@
 
     <h3>Translated Sentence:</h3>
     <div class="output-container">
-      <textarea id="translated-text" placeholder="Telugu translation..." readonly></textarea>
+      <textarea
+        id="translated-text"
+        placeholder="Telugu translation..."
+        readonly
+      ></textarea>
       <div class="action-btns">
-        <button class="action-btn" id="copy-btn"><i class="fas fa-copy"></i></button>
-        <button class="action-btn" id="bookmark-btn"><i class="fas fa-bookmark"></i></button>
+        <button class="action-btn" id="copy-btn">
+          <i class="fas fa-copy"></i>
+        </button>
+        <button class="action-btn" id="bookmark-btn">
+          <i class="fas fa-bookmark"></i>
+        </button>
       </div>
     </div>
   </div>
@@ -44,149 +60,163 @@
       <span class="close-btn" id="close-history">&times;</span>
       <h2>Translation History</h2>
       <ul id="history-list"></ul>
+      <button id="delete-history-btn" class="action-btn">
+        <i class="fas fa-trash-alt"></i> Delete History
+      </button>
     </div>
   </div>
 
   <script src="script.js"></script>
   <script>
-    //function to be called when user clicks on translate button.
     function startTranslation() {
-
-      // Get the text that the user entered
       const inputText = document.getElementById("text-input").value;
-
-      // Split the input into multiple lines to get multiline output
-      const inputLines = inputText.split('\n');
+      const inputLines = inputText.split("\n");
       const promises = [];
 
-      // Loop through each line and send it to the backend for translation
       for (const line of inputLines) {
-        if (line.trim() === '') {
-          promises.push(Promise.resolve('')); // Skip empty lines
+        if (line.trim() === "") {
+          promises.push(Promise.resolve(""));
         } else {
           const data = { sentence: line };
+          const promise = fetch(
+            "https://53e1-34-72-178-152.ngrok-free.app/process",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data),
+            }
+          )
+            .then((response) => response.json())
+            .then((result) => result.processed_sentence);
 
-          // Fetch request to send data to the backend for translation
-          const promise = fetch('https://476a-34-55-101-151.ngrok-free.app/process', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-          })
-          // Get the translated sentence back from the server
-          .then(response => response.json())
-          .then(result => result.processed_sentence);
-
-          promises.push(promise); // Add the promise to the list of promises
+          promises.push(promise);
         }
       }
 
-      // Wait for all translations to complete
       Promise.all(promises)
-        .then(translatedLines => {
-
-          const translatedText = translatedLines.join('\n');
-
-          // Set the translated text to the output textarea
-          document.getElementById('translated-text').value = translatedText;
-
-          // If both original and translated texts are not empty, save them to the backend
+        .then((translatedLines) => {
+          const translatedText = translatedLines.join("\n");
+          document.getElementById("translated-text").value = translatedText;
 
           if (inputText.trim() && translatedText.trim()) {
-            fetch('/save-translation', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+            fetch("/save-translation", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 english: inputText,
-                telugu: translatedText
-              })
-            }).catch(err => console.error('Error saving translation:', err)); 
+                telugu: translatedText,
+              }),
+            }).catch((err) =>
+              console.error("Error saving translation:", err)
+            );
           }
         })
-        .catch(error => {
-          console.error('Translation Error:', error); // Handle any errors that occur during the translation process
+        .catch((error) => {
+          console.error("Translation Error:", error);
         });
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener("DOMContentLoaded", () => {
+      document
+        .getElementById("translate-btn")
+        .addEventListener("click", startTranslation);
 
-      // When the page is loaded, add event listeners to buttons
-      document.getElementById('translate-btn').addEventListener('click', startTranslation);
-
-      // Copy translated text to clipboard when copy button is clicked
-      document.getElementById('copy-btn').addEventListener('click', () => {
-        const translatedText = document.getElementById('translated-text');
+      document.getElementById("copy-btn").addEventListener("click", () => {
+        const translatedText = document.getElementById("translated-text");
         translatedText.select();
-        document.execCommand("copy"); 
+        document.execCommand("copy");
       });
 
-      // Log the translation when bookmark button is clicked
-      document.getElementById('bookmark-btn').addEventListener('click', () => {
-        console.log("Bookmarked: " + document.getElementById('translated-text').value);
+      document.getElementById("bookmark-btn").addEventListener("click", () => {
+        console.log(
+          "Bookmarked: " + document.getElementById("translated-text").value
+        );
       });
 
-      // Fetch and display the current user's username when the page loads
-      fetch('/current-user')
-        .then(response => response.json())
-        .then(data => {
+      fetch("/current-user")
+        .then((response) => response.json())
+        .then((data) => {
           if (data.username) {
-            document.getElementById('username-display').textContent = `Welcome, ${data.username}`;
+            document.getElementById(
+              "username-display"
+            ).textContent = `Welcome, ${data.username}`;
           }
         })
-        .catch(error => {
-          console.error('Error fetching user info:', error);
+        .catch((error) => {
+          console.error("Error fetching user info:", error);
         });
 
-      // Log the user out when the logout button is clicked
-      document.getElementById('logout-btn').addEventListener('click', () => {
-        fetch('/logout', { method: 'POST' })
-          .then(response => response.json())
-          .then(data => {
+      document.getElementById("logout-btn").addEventListener("click", () => {
+        fetch("/logout", { method: "POST" })
+          .then((response) => response.json())
+          .then((data) => {
             if (data.message === "Logged out successfully") {
-              window.location.href = '/login'; 
+              window.location.href = "/login";
             }
           })
-          .catch(error => {
-            console.error('Error logging out:', error);
+          .catch((error) => {
+            console.error("Error logging out:", error);
           });
       });
 
-      //handling of history
-      document.getElementById('history-btn').addEventListener('click', () => {
-        fetch('/history')
-          .then(response => response.json())
-          .then(data => {
+      document.getElementById("history-btn").addEventListener("click", () => {
+        fetch("/history")
+          .then((response) => response.json())
+          .then((data) => {
             if (data.translations && data.translations.length > 0) {
-              const historyList = document.getElementById('history-list');
-              historyList.innerHTML = ''; // Clear previous history
-              // Loop through each translation and display it in the history modal
-              data.translations.forEach(translation => {
-                const listItem = document.createElement('li');
-                listItem.innerHTML = `<strong>English:</strong> ${translation.english} <br> <strong>Telugu:</strong> ${translation.telugu}`;
+              const historyList = document.getElementById("history-list");
+              historyList.innerHTML = "";
+
+              data.translations.forEach((translation) => {
+                const listItem = document.createElement("li");
+                const englishText = Array.isArray(translation.english)
+                  ? translation.english.join("<br>")
+                  : translation.english.replace(/\n/g, "<br>");
+                const teluguText = Array.isArray(translation.telugu)
+                  ? translation.telugu.join("<br>")
+                  : translation.telugu.replace(/\n/g, "<br>");
+
+                listItem.innerHTML = `<strong>English:</strong> ${englishText} <br> <strong>Telugu:</strong> ${teluguText}`;
                 historyList.appendChild(listItem);
               });
-        
 
-              document.getElementById('history-modal').style.display = 'block';
+              document.getElementById("history-modal").style.display = "block";
             }
           })
-          .catch(error => {
-            console.error('Error fetching history:', error);
+          .catch((error) => {
+            console.error("Error fetching history:", error);
           });
       });
 
-      // Close the history modal when the close button is clicked
-      document.getElementById('close-history').addEventListener('click', () => {
-        document.getElementById('history-modal').style.display = 'none';
+      //delete his
+      document.getElementById("delete-history-btn").addEventListener("click", () => {
+        fetch("/delete-history", { method: "DELETE" })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.message === "History deleted successfully") {
+              document.getElementById("h
+              istory-list").innerHTML = "";
+              
+              document.getElementById("history-modal").style.display = "none";
+            }
+          })
+          .catch((error) => {
+            console.error("Error deleting history:", error);
+          });
       });
 
-      // Close the modal if the user clicks outside of it
-      window.addEventListener('click', (event) => {
-        if (event.target === document.getElementById('history-modal')) {
-          document.getElementById('history-modal').style.display = 'none';
+      document
+        .getElementById("close-history")
+        .addEventListener("click", () => {
+          document.getElementById("history-modal").style.display = "none";
+        });
+
+      window.addEventListener("click", (event) => {
+        if (event.target === document.getElementById("history-modal")) {
+          document.getElementById("history-modal").style.display = "none";
         }
       });
     });
   </script>
-
 </body>
 </html>

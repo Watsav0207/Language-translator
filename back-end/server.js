@@ -155,12 +155,13 @@ app.post("/signup", async (req, res) => {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
+  
       const exists = user.translations.some(
-        (t) => t.english === english || t.telugu === telugu
+        (translation) => translation.english === english || translation.telugu === telugu
       );
   
       if (exists) {
-        return res.status(200).end();
+        return res.status(200).json({ message: "Translation already exists" });
       }
   
       user.translations.unshift({ english, telugu });
@@ -175,9 +176,8 @@ app.post("/signup", async (req, res) => {
       console.error("Error saving translation:", err);
       res.status(500).json({ message: "Server error while saving translation" });
     }
-
-
   });
+  
   
   app.get('/current-user', (req, res) => {
     if (req.session.user) {
@@ -219,6 +219,41 @@ app.get("/history", isAuthenticated, async (req, res) => {
   }
   
 });
+
+app.delete("/delete-history", isAuthenticated, async (req, res) => {
+  const username = req.session.user ? req.session.user.username : null;
+
+  if (!username) {
+    return res.status(400).json({ message: "No user logged in" });
+  }
+
+  try {
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (user.translations && user.translations.length > 0) {
+      user.translations = []; 
+      const result = await user.save();
+
+      res.json({ message: "History (translations) deleted successfully" });
+    } else {
+      res.status(400).json({ message: "No translations to delete." });
+    }
+  } catch (err) {
+    console.error("Error deleting history:", err);
+    if (err instanceof mongoose.Error.ValidationError) {
+      res.status(400).json({ message: "Validation error during deletion." });
+    } else if (err instanceof mongoose.Error.CastError) {
+      res.status(400).json({ message: "Invalid data type in the request." });
+    } else {
+      res.status(500).json({ message: "Error deleting translations." });
+    }
+  }
+});
+
 
 app.get("/home", isAuthenticated, (req, res) => {
   res.sendFile(path.resolve(__dirname, "../front-end/index.html"));
