@@ -1,3 +1,42 @@
+function startTranslation() {
+  const inputText = document.getElementById("text-input").value.trim();
+  const translatedTextElement = document.getElementById("translated-text");
+
+  if (!inputText) {
+    translatedTextElement.value = "";
+    return;
+  }
+
+  // Show loading state
+  translatedTextElement.value = "Translating...";
+
+  fetch("https://2024-34-125-166-45.ngrok-free.app/process", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "true"
+    },
+    body: JSON.stringify({ sentence: inputText })
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      translatedTextElement.value = data.processed_sentence || "Translation failed";
+
+      if (data.processed_sentence) {
+        saveTranslation(inputText, data.processed_sentence);
+      }
+    })
+    .catch(error => {
+      console.error("Translation Error:", error);
+      translatedTextElement.value = "Translation error occurred";
+    });
+}
+
 function validateLogin() {
   const username = document.getElementById("username").value.trim();
   const password = document.getElementById("password").value.trim();
@@ -37,14 +76,14 @@ function validateSignup() {
     return false;
   }
 
-  if(username.length < 6 || username.length > 15){
+  if (username.length < 6 || username.length > 15) {
     errorMsg.textContent = "Username length should be between 6 and 15";
     return false;
   }
 
-  const isValidPassword = /^(?=.[0-9])(?=.[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,16}$/.test(password);
+  const isValidPassword = /^(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,16}$/.test(password);
 
-  if(!isValidPassword) {
+  if (!isValidPassword) {
     errorMsg.textContent = "Password must be 8-16 characters long, include a number and a special character.";
     return false;
   }
@@ -60,9 +99,8 @@ function validateSignup() {
     })
     .then(() => {
       const successMsg = document.createElement("div");
-      successMsg.classList.add("success-message");
+      successMsg.classList.add("success-message", "success");
       successMsg.textContent = "Account created! Redirecting to login...";
-      successMsg.classList.add("success");
       document.querySelector(".login-container").appendChild(successMsg);
       setTimeout(() => window.location.href = "/login", 2000);
     })
@@ -73,7 +111,6 @@ function validateSignup() {
   return false;
 }
 
-// eye icon to show or hide the password
 function togglePassword(inputId = "password", iconContainer = null) {
   const passwordField = document.getElementById(inputId);
   const icon = iconContainer ? iconContainer.querySelector("i") : document.querySelector(".toggle-password i");
@@ -92,17 +129,17 @@ function initializeTheme() {
   themeToggle.className = 'theme-toggle';
   themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
   themeToggle.id = 'theme-toggle';
-  
+
   const header = document.querySelector('.page-header');
   if (header) {
     header.appendChild(themeToggle);
-    
+
     const currentTheme = localStorage.getItem('theme') || 'dark';
     if (currentTheme === 'light') {
       document.body.classList.add('light-theme');
       themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
     }
-    
+
     themeToggle.addEventListener('click', () => {
       document.body.classList.toggle('light-theme');
       const isLight = document.body.classList.contains('light-theme');
@@ -112,9 +149,6 @@ function initializeTheme() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', initializeTheme);
-
-// func to call when user hits on translate button
 function saveTranslation(english, telugu) {
   fetch('/save-translation', {
     method: 'POST',
@@ -123,19 +157,19 @@ function saveTranslation(english, telugu) {
     },
     body: JSON.stringify({ english, telugu })
   })
-  .catch(error => {
-    console.error('Error saving translation:', error);
-  });
+    .catch(error => {
+      console.error('Error saving translation:', error);
+    });
 }
 
 function showTranslationHistory() {
   let historyModal = document.getElementById('history-modal');
-  
+
   if (!historyModal) {
     historyModal = document.createElement('div');
     historyModal.id = 'history-modal';
     historyModal.className = 'modal';
-    
+
     historyModal.innerHTML = `
       <div class="modal-content">
         <span class="close-btn">&times;</span>
@@ -143,9 +177,9 @@ function showTranslationHistory() {
         <div id="history-list"></div>
       </div>
     `;
-    
+
     document.body.appendChild(historyModal);
-    
+
     historyModal.querySelector('.close-btn').addEventListener('click', () => {
       historyModal.style.display = 'none';
     });
@@ -162,7 +196,7 @@ function showTranslationHistory() {
     .then(data => {
       const historyList = document.getElementById('history-list');
       historyList.innerHTML = '';
-      
+
       if (data.translations && data.translations.length > 0) {
         data.translations.forEach((item, index) => {
           const historyItem = document.createElement('div');
@@ -197,7 +231,7 @@ function showTranslationHistory() {
       console.error('Error fetching history:', error);
       document.getElementById('history-list').innerHTML = '<p>Error loading translation history.</p>';
     });
-  
+
   historyModal.style.display = 'block';
 }
 
@@ -225,30 +259,69 @@ function deleteHistory(index) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  const historyBtn = document.querySelector('.nav-btn:nth-child(2)');
-  if (historyBtn) {
-    historyBtn.addEventListener('click', showTranslationHistory);
-  }
-  
-  const translateBtn = document.getElementById('translate-btn');
-  if (translateBtn) {
+  initializeTheme();
 
-    const oldHandler = translateBtn.onclick;
-    translateBtn.onclick = function() {
-      if (oldHandler) {
-        oldHandler.call(this);
+  document.getElementById("translate-btn")?.addEventListener("click", startTranslation);
+
+  document.getElementById("copy-btn")?.addEventListener("click", () => {
+    const translatedText = document.getElementById("translated-text");
+    translatedText.select();
+    document.execCommand("copy");
+  });
+
+  document.getElementById("bookmark-btn")?.addEventListener("click", () => {
+    console.log("Bookmarked: " + document.getElementById("translated-text").value);
+  });
+
+  fetch("/current-user")
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.username) {
+        document.getElementById("username-display").textContent = `Hello, ${data.username}`;
       } else {
-        startTranslation();
+        document.getElementById("username-display").textContent = "Hello, Guest";
       }
+    })
+    .catch((error) => {
+      console.error("Error fetching user info:", error);
+    });
 
-      setTimeout(() => {
-        const english = document.getElementById('text-input').value;
-        const telugu = document.getElementById('translated-text').value;
-        
-        if (english && telugu) {
-          saveTranslation(english, telugu);
+  document.getElementById("logout-btn")?.addEventListener("click", () => {
+    fetch("/logout", { method: "POST" })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.message === "Logged out successfully") {
+          window.location.href = "/login";
         }
-      }, 1000);
-    };
-  }
+      })
+      .catch((error) => {
+        console.error("Error logging out:", error);
+      });
+  });
+
+  document.getElementById("history-btn")?.addEventListener("click", showTranslationHistory);
+
+  document.getElementById("delete-history-btn")?.addEventListener("click", () => {
+    fetch("/delete-history", { method: "DELETE" })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.message === "History deleted successfully") {
+          document.getElementById("history-list").innerHTML = "";
+          document.getElementById("history-modal").style.display = "none";
+        }
+      })
+      .catch((error) => {
+        console.error("Error deleting history:", error);
+      });
+  });
+
+  document.getElementById("close-history")?.addEventListener("click", () => {
+    document.getElementById("history-modal").style.display = "none";
+  });
+
+  window.addEventListener("click", (event) => {
+    if (event.target === document.getElementById("history-modal")) {
+      document.getElementById("history-modal").style.display = "none";
+    }
+  });
 });
