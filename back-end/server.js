@@ -27,7 +27,15 @@ const UserSchema = new mongoose.Schema({
   translations: [
     {
       english: { type: String, required: true },
-      telugu: { type: String, required: true }
+      telugu: { type: String, required: true },
+      createdAt: { type: Date, default: Date.now }
+    }
+  ],
+  savedTranslations: [
+    {
+      english: { type: String, required: true },
+      telugu: { type: String, required: true },
+      createdAt: { type: Date, default: Date.now }
     }
   ]
 });
@@ -135,22 +143,53 @@ app.post("/save-translation", isAuthenticated, async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const exists = user.translations.some(
-      (translation) => translation.english === english || translation.telugu === telugu
+    // Check if this exact translation already exists in history
+    const existsInHistory = user.translations.some(
+      translation => translation.english === english && translation.telugu === telugu
     );
 
-    if (exists) {
-      return res.status(200).json({ message: "Translation already exists" });
+    if (!existsInHistory) {
+      user.translations.unshift({ english, telugu });
+
+      // Keep only the 5 most recent translations
+      if (user.translations.length > 5) {
+        user.translations = user.translations.slice(0, 5);
+      }
+
+      await user.save();
     }
 
-    user.translations.unshift({ english, telugu });
+    res.status(200).json({ message: "Translation processed successfully" });
+  } catch (err) {
+    console.error("Error saving translation:", err);
+    res.status(500).json({ message: "Server error while saving translation" });
+  }
+});
 
-    if (user.translations.length > 5) {
-      user.translations.pop();
+app.post("/save-to-saved", isAuthenticated, async (req, res) => {
+  const { english, telugu } = req.body;
+  const username = req.session.user.username;
+
+  try {
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
+    // Check if this exact translation already exists in saved
+    const existsInSaved = user.savedTranslations.some(
+      translation => translation.english === english && translation.telugu === telugu
+    );
+
+    if (existsInSaved) {
+      return res.status(200).json({ message: "Translation already saved" });
+    }
+
+    user.savedTranslations.unshift({ english, telugu });
     await user.save();
-    res.status(200).json({ message: "Translation saved successfully" });
+
+    res.status(200).json({ message: "Translation saved to saved list" });
   } catch (err) {
     console.error("Error saving translation:", err);
     res.status(500).json({ message: "Server error while saving translation" });
@@ -186,46 +225,115 @@ app.get("/history", isAuthenticated, async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const lastFiveTranslations = user.translations.slice(0, 5);
-
-    res.json({ translations: lastFiveTranslations });
+    res.json({ translations: user.translations });
   } catch (err) {
     console.error("Error fetching history:", err);
     res.status(500).json({ message: "Server error while fetching history" });
   }
 });
 
-app.delete("/delete-history", isAuthenticated, async (req, res) => {
-  const username = req.session.user ? req.session.user.username : null;
-
-  if (!username) {
-    return res.status(400).json({ message: "No user logged in" });
-  }
+app.get("/saved-translations", isAuthenticated, async (req, res) => {
+  const username = req.session.user.username;
 
   try {
     const user = await User.findOne({ username });
 
     if (!user) {
-      return res.status(404).json({ message: "User not found." });
+      return res.status(404).json({ message: "User not found" });
     }
 
-    if (user.translations && user.translations.length > 0) {
-      user.translations = [];
-      const result = await user.save();
+    res.json({ savedTranslations: user.savedTranslations });
+  } catch (err) {
+    console.error("Error fetching saved translations:", err);
+    res.status(500).json({ message: "Server error while fetching saved translations" });
+  }
+});
 
-      res.json({ message: "History (translations) deleted successfully" });
-    } else {
-      res.status(400).json({ message: "No translations to delete." });
+app.delete("/delete-history-item", isAuthenticated, async (req, res) => {
+  const { index } = req.body;
+  const username = req.session.user.username;
+
+  try {
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
+
+    if (index >= 0 && index < user.translations.length) {
+      user.translations.splice(index, 1);
+      await user.save();
+      return res.json({ message: "History item deleted successfully" });
+    }
+
+    return res.status(400).json({ message: "Invalid index" });
+  } catch (err) {
+    console.error("Error deleting history item:", err);
+    res.status(500).json({ message: "Server error while deleting history item" });
+  }
+});
+
+app.delete("/delete-saved-item", isAuthenticated, async (req, res) => {
+  const { index } = req.body;
+  const username = req.session.user.username;
+
+  try {
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (index >= 0 && index < user.savedTranslations.length) {
+      user.savedTranslations.splice(index, 1);
+      await user.save();
+      return res.json({ message: "Saved item deleted successfully" });
+    }
+
+    return res.status(400).json({ message: "Invalid index" });
+  } catch (err) {
+    console.error("Error deleting saved item:", err);
+    res.status(500).json({ message: "Server error while deleting saved item" });
+  }
+});
+
+app.delete("/delete-history", isAuthenticated, async (req, res) => {
+  const username = req.session.user.username;
+
+  try {
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.translations = [];
+    await user.save();
+
+    res.json({ message: "History deleted successfully" });
   } catch (err) {
     console.error("Error deleting history:", err);
-    if (err instanceof mongoose.Error.ValidationError) {
-      res.status(400).json({ message: "Validation error during deletion." });
-    } else if (err instanceof mongoose.Error.CastError) {
-      res.status(400).json({ message: "Invalid data type in the request." });
-    } else {
-      res.status(500).json({ message: "Error deleting translations." });
+    res.status(500).json({ message: "Server error while deleting history" });
+  }
+});
+
+app.delete("/delete-saved", isAuthenticated, async (req, res) => {
+  const username = req.session.user.username;
+
+  try {
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
+
+    user.savedTranslations = [];
+    await user.save();
+
+    res.json({ message: "Saved translations deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting saved translations:", err);
+    res.status(500).json({ message: "Server error while deleting saved translations" });
   }
 });
 
