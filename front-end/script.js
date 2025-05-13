@@ -10,31 +10,32 @@ function startTranslation() {
   // Show loading state
   translatedTextElement.value = "Translating...";
 
-  fetch("https://2024-34-125-166-45.ngrok-free.app/process", {
+  fetch("https://f209-34-60-119-88.ngrok-free.app/process", {
     method: "POST",
-    headers: {
+    headers: { 
       "Content-Type": "application/json",
-      "ngrok-skip-browser-warning": "true"
+      "ngrok-skip-browser-warning": "true" 
     },
     body: JSON.stringify({ sentence: inputText })
   })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    })
-    .then(data => {
-      translatedTextElement.value = data.processed_sentence || "Translation failed";
-
-      if (data.processed_sentence) {
-        saveTranslation(inputText, data.processed_sentence);
-      }
-    })
-    .catch(error => {
-      console.error("Translation Error:", error);
-      translatedTextElement.value = "Translation error occurred";
-    });
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  })
+  .then(data => {
+    translatedTextElement.value = data.processed_sentence || "Translation failed";
+    
+    // Save to history if translation was successful
+    if (data.processed_sentence) {
+      saveTranslation(inputText, data.processed_sentence);
+    }
+  })
+  .catch(error => {
+    console.error("Translation Error:", error);
+    translatedTextElement.value = "Translation error occurred";
+  });
 }
 
 function validateLogin() {
@@ -162,34 +163,39 @@ function saveTranslation(english, telugu) {
     });
 }
 
-function showTranslationHistory() {
-  let historyModal = document.getElementById('history-modal');
+function saveCurrentTranslation() {
+  const english = document.getElementById('text-input').value.trim();
+  const telugu = document.getElementById('translated-text').value.trim();
 
-  if (!historyModal) {
-    historyModal = document.createElement('div');
-    historyModal.id = 'history-modal';
-    historyModal.className = 'modal';
-
-    historyModal.innerHTML = `
-      <div class="modal-content">
-        <span class="close-btn">&times;</span>
-        <h2>Translation History</h2>
-        <div id="history-list"></div>
-      </div>
-    `;
-
-    document.body.appendChild(historyModal);
-
-    historyModal.querySelector('.close-btn').addEventListener('click', () => {
-      historyModal.style.display = 'none';
-    });
-
-    window.addEventListener('click', (event) => {
-      if (event.target === historyModal) {
-        historyModal.style.display = 'none';
-      }
-    });
+  if (!english || !telugu || telugu === "Translating..." || telugu === "Translation failed") {
+    alert("Please translate something first before saving");
+    return;
   }
+
+  fetch('/save-to-saved', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ english, telugu })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.message === "Translation saved to saved list") {
+      alert("Translation saved successfully!");
+    } else {
+      alert(data.message || "Error saving translation");
+    }
+  })
+  .catch(error => {
+    console.error('Error saving translation:', error);
+    alert("Error saving translation");
+  });
+}
+
+function showTranslationHistory() {
+  const historyModal = document.getElementById('history-modal');
+  historyModal.style.display = 'block';
 
   fetch('/history')
     .then(response => response.json())
@@ -199,7 +205,7 @@ function showTranslationHistory() {
 
       if (data.translations && data.translations.length > 0) {
         data.translations.forEach((item, index) => {
-          const historyItem = document.createElement('div');
+          const historyItem = document.createElement('li');
           historyItem.className = 'history-item';
           historyItem.innerHTML = `
             <div class="history-entry">
@@ -220,41 +226,138 @@ function showTranslationHistory() {
           });
 
           historyItem.querySelector('.delete-btn').addEventListener('click', () => {
-            deleteHistory(index);
+            deleteHistoryItem(index);
           });
         });
       } else {
-        historyList.innerHTML = '<p>No translation history found.</p>';
+        historyList.innerHTML = '<li>No translation history found.</li>';
       }
     })
     .catch(error => {
       console.error('Error fetching history:', error);
-      document.getElementById('history-list').innerHTML = '<p>Error loading translation history.</p>';
+      document.getElementById('history-list').innerHTML = '<li>Error loading translation history.</li>';
     });
-
-  historyModal.style.display = 'block';
 }
 
-function deleteHistory(index) {
-  fetch('/delete-history', {
+function showSavedTranslations() {
+  const savedModal = document.getElementById('saved-modal');
+  savedModal.style.display = 'block';
+
+  fetch('/saved-translations')
+    .then(response => response.json())
+    .then(data => {
+      const savedList = document.getElementById('saved-list');
+      savedList.innerHTML = '';
+
+      if (data.savedTranslations && data.savedTranslations.length > 0) {
+        data.savedTranslations.forEach((item, index) => {
+          const savedItem = document.createElement('li');
+          savedItem.className = 'saved-item';
+          savedItem.innerHTML = `
+            <div class="saved-entry">
+              <p><strong>English:</strong> ${item.english}</p>
+              <p><strong>Telugu:</strong> ${item.telugu}</p>
+            </div>
+            <div class="saved-actions">
+              <button class="use-btn" data-index="${index}">Use</button>
+              <button class="delete-btn" data-index="${index}">Delete</button>
+            </div>
+          `;
+          savedList.appendChild(savedItem);
+
+          savedItem.querySelector('.use-btn').addEventListener('click', () => {
+            document.getElementById('text-input').value = item.english;
+            document.getElementById('translated-text').value = item.telugu;
+            savedModal.style.display = 'none';
+          });
+
+          savedItem.querySelector('.delete-btn').addEventListener('click', () => {
+            deleteSavedItem(index);
+          });
+        });
+      } else {
+        savedList.innerHTML = '<li>No saved translations found.</li>';
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching saved translations:', error);
+      document.getElementById('saved-list').innerHTML = '<li>Error loading saved translations.</li>';
+    });
+}
+
+function deleteHistoryItem(index) {
+  fetch('/delete-history-item', {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({ index })
   })
-    .then(res => res.json())
+    .then(response => response.json())
     .then(data => {
-      if (data.message === "Item deleted successfully.") {
-        alert("History item deleted!");
+      if (data.message === "History item deleted successfully") {
         showTranslationHistory();
       } else {
-        alert("Error deleting history.");
+        alert("Error deleting history item");
       }
     })
     .catch(error => {
-      console.error('Error deleting history:', error);
-      alert("Error deleting history.");
+      console.error('Error deleting history item:', error);
+      alert("Error deleting history item");
+    });
+}
+
+function deleteSavedItem(index) {
+  fetch('/delete-saved-item', {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ index })
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (data.message === "Saved item deleted successfully") {
+        showSavedTranslations();
+      } else {
+        alert("Error deleting saved item");
+      }
+    })
+    .catch(error => {
+      console.error('Error deleting saved item:', error);
+      alert("Error deleting saved item");
+    });
+}
+
+function deleteAllHistory() {
+  if (!confirm("Are you sure you want to delete all history?")) return;
+
+  fetch('/delete-history', { method: "DELETE" })
+    .then(response => response.json())
+    .then(data => {
+      if (data.message === "History deleted successfully") {
+        document.getElementById("history-list").innerHTML = "";
+        document.getElementById("history-modal").style.display = "none";
+      }
+    })
+    .catch(error => {
+      console.error("Error deleting history:", error);
+    });
+}
+
+function deleteAllSaved() {
+  if (!confirm("Are you sure you want to delete all saved translations?")) return;
+
+  fetch('/delete-saved', { method: "DELETE" })
+    .then(response => response.json())
+    .then(data => {
+      if (data.message === "Saved translations deleted successfully") {
+        document.getElementById("saved-list").innerHTML = "";
+        document.getElementById("saved-modal").style.display = "none";
+      }
+    })
+    .catch(error => {
+      console.error("Error deleting saved translations:", error);
     });
 }
 
@@ -269,9 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.execCommand("copy");
   });
 
-  document.getElementById("bookmark-btn")?.addEventListener("click", () => {
-    console.log("Bookmarked: " + document.getElementById("translated-text").value);
-  });
+  document.getElementById("bookmark-btn")?.addEventListener("click", saveCurrentTranslation);
 
   fetch("/current-user")
     .then((response) => response.json())
@@ -300,28 +401,25 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById("history-btn")?.addEventListener("click", showTranslationHistory);
+  document.getElementById("saved-btn")?.addEventListener("click", showSavedTranslations);
 
-  document.getElementById("delete-history-btn")?.addEventListener("click", () => {
-    fetch("/delete-history", { method: "DELETE" })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.message === "History deleted successfully") {
-          document.getElementById("history-list").innerHTML = "";
-          document.getElementById("history-modal").style.display = "none";
-        }
-      })
-      .catch((error) => {
-        console.error("Error deleting history:", error);
-      });
-  });
+  document.getElementById("delete-history-btn")?.addEventListener("click", deleteAllHistory);
+  document.getElementById("delete-saved-btn")?.addEventListener("click", deleteAllSaved);
 
   document.getElementById("close-history")?.addEventListener("click", () => {
     document.getElementById("history-modal").style.display = "none";
   });
 
+  document.getElementById("close-saved")?.addEventListener("click", () => {
+    document.getElementById("saved-modal").style.display = "none";
+  });
+
   window.addEventListener("click", (event) => {
     if (event.target === document.getElementById("history-modal")) {
       document.getElementById("history-modal").style.display = "none";
+    }
+    if (event.target === document.getElementById("saved-modal")) {
+      document.getElementById("saved-modal").style.display = "none";
     }
   });
 });
