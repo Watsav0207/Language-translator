@@ -7,35 +7,56 @@ function startTranslation() {
     return;
   }
 
+  // Split input by newlines
+  const inputLines = inputText.split('\n');
+  
   // Show loading state
   translatedTextElement.value = "Translating...";
 
-  fetch("https://f209-34-60-119-88.ngrok-free.app/process", {
-    method: "POST",
-    headers: { 
-      "Content-Type": "application/json",
-      "ngrok-skip-browser-warning": "true" 
-    },
-    body: JSON.stringify({ sentence: inputText })
-  })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json();
-  })
-  .then(data => {
-    translatedTextElement.value = data.processed_sentence || "Translation failed";
+  // Process each line separately
+  const translationPromises = inputLines.map(line => {
+    if (!line.trim()) return Promise.resolve(""); // Preserve empty lines
     
-    // Save to history if translation was successful
-    if (data.processed_sentence) {
-      saveTranslation(inputText, data.processed_sentence);
-    }
-  })
-  .catch(error => {
-    console.error("Translation Error:", error);
-    translatedTextElement.value = "Translation error occurred";
+    return fetch("https://ed70-34-23-63-1.ngrok-free.app/process", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true" 
+      },
+      body: JSON.stringify({ sentence: line })
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      return data.processed_sentence || "Translation failed";
+    })
+    .catch(error => {
+      console.error("Translation Error:", error);
+      return "Translation error occurred";
+    });
   });
+
+  // Wait for all translations to complete
+  Promise.all(translationPromises)
+    .then(translatedLines => {
+      // Combine translated lines with newlines
+      const combinedTranslation = translatedLines.join('\n');
+      translatedTextElement.value = combinedTranslation;
+      
+      // Save to history if translation was successful
+      if (combinedTranslation && !combinedTranslation.includes("Translation failed") && 
+          !combinedTranslation.includes("Translation error occurred")) {
+        saveTranslation(inputText, combinedTranslation);
+      }
+    })
+    .catch(error => {
+      console.error("Error in translation process:", error);
+      translatedTextElement.value = "Translation error occurred";
+    });
 }
 
 function validateLogin() {
