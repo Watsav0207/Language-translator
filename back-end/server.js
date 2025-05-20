@@ -2,12 +2,39 @@ const express = require("express");
 const session = require("express-session");
 const path = require("path");
 const cookieParser = require("cookie-parser");
-const mongoose = require("mongoose");
-const bcrypt = require("bcrypt");
+const bcrypt = require('bcryptjs');
 const rateLimit = require("express-rate-limit");
 const logger = require("./logger");
-require("dotenv").config();
+const mongoose = require("mongoose"); // Needed for schema operations
+require("dotenv").config(); // Load .env variables
 
+// MongoDB connection
+const { MongoClient, ServerApiVersion } = require("mongodb");
+const uri = process.env.MONGO_URL;
+
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  },
+});
+
+async function run() {
+  try {
+    await client.connect();
+    await client.db("admin").command({ ping: 1 });
+    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+  } catch (error) {
+    console.error("MongoDB connection failed:", error);
+  } finally {
+    await client.close();
+  }
+}
+
+run();
+
+// Express app setup
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET;
@@ -28,14 +55,14 @@ const UserSchema = new mongoose.Schema({
     {
       english: { type: String, required: true },
       telugu: { type: String, required: true },
-      createdAt: { type: Date, default: Date.now }
+      createdAt: { type: Date, default: Date.now },
     }
   ],
   savedTranslations: [
     {
       english: { type: String, required: true },
       telugu: { type: String, required: true },
-      createdAt: { type: Date, default: Date.now }
+      createdAt: { type: Date, default: Date.now },
     }
   ]
 });
@@ -50,13 +77,12 @@ app.use(
     saveUninitialized: false,
     cookie: {
       secure: false,
-      maxAge: 1000 * 60 * 60
+      maxAge: 1000 * 60 * 60,
     },
   })
 );
 
 app.use(logger);
-
 app.use(express.json());
 app.use(express.static(path.resolve(__dirname, "../front-end")));
 
@@ -78,22 +104,17 @@ app.get("/", (req, res) => {
 });
 
 app.get("/login", (req, res) => {
-  if (req.session.user)
-    return res.redirect("/home");
-
+  if (req.session.user) return res.redirect("/home");
   res.sendFile(path.resolve(__dirname, "../front-end/login.html"));
 });
 
 app.get("/signup", (req, res) => {
-  if (req.session.user) {
-    return res.redirect("/home");
-  }
+  if (req.session.user) return res.redirect("/home");
   res.sendFile(path.resolve(__dirname, "../front-end/signup.html"));
 });
 
 app.post("/signup", async (req, res) => {
   const { username, password } = req.body;
-
   const hashedPassword = await bcrypt.hash(password, 10);
 
   try {
@@ -125,8 +146,7 @@ app.post("/login", async (req, res) => {
     } else {
       return res.status(401).json({ message: "Invalid username or password" });
     }
-  }
-  catch (err) {
+  } catch (err) {
     console.error("Error during login:", err);
     res.status(500).json({ message: "Server error during login" });
   }
@@ -138,12 +158,10 @@ app.post("/save-translation", isAuthenticated, async (req, res) => {
 
   try {
     const user = await User.findOne({ username });
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check if this exact translation already exists in history
     const existsInHistory = user.translations.some(
       translation => translation.english === english && translation.telugu === telugu
     );
@@ -151,7 +169,6 @@ app.post("/save-translation", isAuthenticated, async (req, res) => {
     if (!existsInHistory) {
       user.translations.unshift({ english, telugu });
 
-      // Keep only the 5 most recent translations
       if (user.translations.length > 5) {
         user.translations = user.translations.slice(0, 5);
       }
@@ -172,12 +189,10 @@ app.post("/save-to-saved", isAuthenticated, async (req, res) => {
 
   try {
     const user = await User.findOne({ username });
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check if this exact translation already exists in saved
     const existsInSaved = user.savedTranslations.some(
       translation => translation.english === english && translation.telugu === telugu
     );
@@ -196,7 +211,7 @@ app.post("/save-to-saved", isAuthenticated, async (req, res) => {
   }
 });
 
-app.get('/current-user', (req, res) => {
+app.get("/current-user", (req, res) => {
   if (req.session.user) {
     res.json({ username: req.session.user.username });
   } else {
@@ -204,13 +219,13 @@ app.get('/current-user', (req, res) => {
   }
 });
 
-app.post('/logout', (req, res) => {
+app.post("/logout", (req, res) => {
   req.session.destroy((err) => {
     if (err) {
       return res.status(500).json({ message: "Error logging out" });
     }
 
-    res.clearCookie('connect.sid');
+    res.clearCookie("connect.sid");
     res.json({ message: "Logged out successfully" });
   });
 });
@@ -220,7 +235,6 @@ app.get("/history", isAuthenticated, async (req, res) => {
 
   try {
     const user = await User.findOne({ username });
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -237,7 +251,6 @@ app.get("/saved-translations", isAuthenticated, async (req, res) => {
 
   try {
     const user = await User.findOne({ username });
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -255,7 +268,6 @@ app.delete("/delete-history-item", isAuthenticated, async (req, res) => {
 
   try {
     const user = await User.findOne({ username });
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -279,7 +291,6 @@ app.delete("/delete-saved-item", isAuthenticated, async (req, res) => {
 
   try {
     const user = await User.findOne({ username });
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -302,7 +313,6 @@ app.delete("/delete-history", isAuthenticated, async (req, res) => {
 
   try {
     const user = await User.findOne({ username });
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -322,7 +332,6 @@ app.delete("/delete-saved", isAuthenticated, async (req, res) => {
 
   try {
     const user = await User.findOne({ username });
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
