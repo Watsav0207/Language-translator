@@ -17,7 +17,11 @@ function startTranslation() {
   const translationPromises = inputLines.map(line => {
     if (!line.trim()) return Promise.resolve(""); // Preserve empty lines
     
+<<<<<<< Updated upstream
     return fetch("https://ed70-34-23-63-1.ngrok-free.app/process", {
+=======
+    return fetch("https://87cb-104-199-185-126.ngrok-free.app/process", {
+>>>>>>> Stashed changes
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
@@ -443,4 +447,8 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById("saved-modal").style.display = "none";
     }
   });
+<<<<<<< Updated upstream
 });
+=======
+});
+>>>>>>> Stashed changes
