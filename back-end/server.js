@@ -11,24 +11,29 @@ require("dotenv").config();
 
 // Express app setup
 const app = express();
-const PORT = process.env.PORT || 10000; // Changed to match Render's default port
+const PORT = process.env.PORT || 10000;
 const isProduction = process.env.NODE_ENV === 'production';
 
-// MongoDB connection with improved configuration
+// Improved MongoDB connection
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URL, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+    // Encode the password properly
+    const mongoUrl = process.env.MONGO_URL || 
+      'mongodb+srv://admin:Ar%40020407@cluster0.y33awui.mongodb.net/translatorDB?retryWrites=true&w=majority';
+    
+    await mongoose.connect(mongoUrl, {
       retryWrites: true,
       w: 'majority'
     });
+    
     console.log("Connected to MongoDB!");
   } catch (err) {
     console.error("MongoDB connection error:", err.message);
     process.exit(1);
   }
 };
+
+// Connect to DB first
 connectDB();
 
 // Mongoose schema and model
@@ -64,40 +69,36 @@ const User = mongoose.model("users", UserSchema);
 // Middleware
 app.use(cookieParser());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // Added for form data parsing
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.resolve(__dirname, "../front-end")));
 
-// Session configuration with enhanced options
+// Session configuration - Fixed MongoStore
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || 'fallback_secret_please_change', // Added fallback
+    secret: process.env.SESSION_SECRET || 'fallback_secret_please_change',
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
-      mongoUrl: process.env.MONGO_URL,
-      ttl: 14 * 24 * 60 * 60, // 14 days
-      autoRemove: 'native', // Better session cleanup
-      crypto: {
-        secret: process.env.SESSION_SECRET || 'fallback_secret_for_crypto'
-      }
+      client: mongoose.connection.getClient(), // Reuse existing connection
+      ttl: 14 * 24 * 60 * 60,
+      autoRemove: 'native'
     }),
     cookie: {
       secure: isProduction,
-      maxAge: 1000 * 60 * 60, // 1 hour
+      maxAge: 1000 * 60 * 60,
       sameSite: isProduction ? 'none' : 'lax',
-      httpOnly: true, // Added for security
-      domain: isProduction ? '.yourdomain.com' : undefined // Set if using custom domain
+      httpOnly: true
     }
   })
 );
 
 if (isProduction) {
-  app.set('trust proxy', 1); // Trust first proxy
+  app.set('trust proxy', 1);
 }
 
-// Rate limiting with enhanced headers
+// Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: isProduction ? 100 : 1000,
   message: "Too many requests from this IP, please try again later.",
   headers: true
@@ -107,7 +108,7 @@ app.use(limiter);
 // Custom logger
 app.use(logger);
 
-// Authentication middleware with enhanced checks
+// Authentication middleware
 function isAuthenticated(req, res, next) {
   if (req.session.user && req.session.user.username) {
     return next();
@@ -152,7 +153,7 @@ app.post("/signup", async (req, res) => {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12); // Increased salt rounds
+    const hashedPassword = await bcrypt.hash(password, 12);
     await User.create({ username, password: hashedPassword });
     res.status(201).json({ 
       message: "User created successfully",
@@ -226,10 +227,7 @@ app.post("/logout", (req, res) => {
         error: "server_error"
       });
     }
-    res.clearCookie("connect.sid", {
-      path: '/',
-      domain: isProduction ? '.yourdomain.com' : undefined
-    });
+    res.clearCookie("connect.sid");
     res.json({ 
       message: "Logged out successfully",
       success: true
@@ -237,9 +235,7 @@ app.post("/logout", (req, res) => {
   });
 });
 
-// [Rest of your routes remain similar but with enhanced error handling...]
-
-// Error handling middleware with more details
+// Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ 
@@ -249,10 +245,9 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Health check endpoint with DB status
+// Health check endpoint
 app.get("/health", async (req, res) => {
   try {
-    // Simple DB ping to check connection
     await mongoose.connection.db.admin().ping();
     res.status(200).json({ 
       status: "healthy",
@@ -268,19 +263,18 @@ app.get("/health", async (req, res) => {
   }
 });
 
-// Start server with enhanced error handling
+// Start server
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${isProduction ? 'Production' : 'Development'}`);
 });
 
-// Handle unhandled promise rejections
+// Error handlers
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled Rejection:', err);
   server.close(() => process.exit(1));
 });
 
-// Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
   server.close(() => process.exit(1));
