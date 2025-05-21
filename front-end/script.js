@@ -1,3 +1,13 @@
+if (window.location.origin.includes('your-render-app.onrender.com')) {
+  const originalFetch = window.fetch;
+  window.fetch = function(url, options) {
+    if (typeof url === 'string' && url.startsWith('/')) {
+      url = window.location.origin + url;
+    }
+    return originalFetch(url, options);
+  };
+}
+
 function startTranslation() {
   const inputText = document.getElementById("text-input").value.trim();
   const translatedTextElement = document.getElementById("translated-text");
@@ -17,11 +27,8 @@ function startTranslation() {
   const translationPromises = inputLines.map(line => {
     if (!line.trim()) return Promise.resolve(""); // Preserve empty lines
     
-<<<<<<< Updated upstream
-    return fetch("https://ed70-34-23-63-1.ngrok-free.app/process", {
-=======
-    return fetch("https://87cb-104-199-185-126.ngrok-free.app/process", {
->>>>>>> Stashed changes
+    
+    return fetch("https://language-translator-ttbp.onrender.com/process", {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
@@ -447,8 +454,4 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById("saved-modal").style.display = "none";
     }
   });
-<<<<<<< Updated upstream
 });
-=======
-});
->>>>>>> Stashed changes
