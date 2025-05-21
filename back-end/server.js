@@ -127,7 +127,17 @@ function isAuthenticated(req, res, next) {
 
 // Routes
 app.get("/", (req, res) => {
+  // Check if user is already logged in
+  if (req.session && req.session.user && req.session.user.username) {
+    return res.redirect("/home");
+  }
+  // If not logged in, redirect to login page
   res.redirect("/login");
+});
+
+// Also make sure this route exists to serve your home page:
+app.get("/home", isAuthenticated, (req, res) => {
+  res.sendFile(path.resolve(__dirname, "../front-end/index.html"));
 });
 
 app.get("/login", (req, res) => {
@@ -139,7 +149,6 @@ app.get("/signup", (req, res) => {
   if (req.session.user) return res.redirect("/home");
   res.sendFile(path.resolve(__dirname, "../front-end/signup.html"));
 });
-
 app.post("/signup", async (req, res) => {
   const { username, password } = req.body;
   
@@ -160,14 +169,17 @@ app.post("/signup", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    await User.create({ username, password: hashedPassword });
-    res.status(201).json({ 
+    const newUser = await User.create({ username, password: hashedPassword });
+    
+    console.log("User created successfully:", username);
+    
+    return res.status(201).json({ 
       message: "User created successfully",
       success: true
     });
   } catch (err) {
     console.error("Signup error:", err);
-    res.status(500).json({ 
+    return res.status(500).json({ 
       message: "Server error during signup.",
       error: "server_error"
     });
@@ -176,6 +188,8 @@ app.post("/signup", async (req, res) => {
 
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
+  
+  console.log("Login attempt for:", username);
 
   if (!username || !password) {
     return res.status(400).json({ 
@@ -186,17 +200,33 @@ app.post("/login", async (req, res) => {
 
   try {
     const user = await User.findOne({ username });
+    console.log("User found:", user ? "yes" : "no");
 
     if (user && await bcrypt.compare(password, user.password)) {
+      // Set the session data
       req.session.user = { 
         username: user.username,
-        id: user._id 
+        id: user._id.toString()
       };
-      return res.json({ 
-        message: "Login successful",
-        success: true
+      
+      // Save the session explicitly
+      req.session.save((err) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({
+            message: "Error creating session",
+            error: "session_error"
+          });
+        }
+        
+        console.log("Login successful for:", username);
+        return res.json({ 
+          message: "Login successful",
+          success: true
+        });
       });
     } else {
+      console.log("Invalid credentials for:", username);
       return res.status(401).json({ 
         message: "Invalid credentials",
         error: "auth_error"
@@ -204,7 +234,7 @@ app.post("/login", async (req, res) => {
     }
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ 
+    return res.status(500).json({ 
       message: "Server error during login",
       error: "server_error"
     });
@@ -242,14 +272,29 @@ app.post("/logout", (req, res) => {
 });
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ 
-    message: "Something went wrong!",
-    error: err.message,
-    stack: isProduction ? undefined : err.stack
-  });
-});
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'fallback_secret_please_change',
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+      client: mongoose.connection.getClient(),
+      ttl: 14 * 24 * 60 * 60,
+      autoRemove: 'native'
+    }),
+    cookie: {
+      secure: isProduction,
+      maxAge: 1000 * 60 * 60 * 24, // Extended to 24 hours
+      sameSite: isProduction ? 'none' : 'lax',
+      httpOnly: true
+    }
+  })
+);
+
+// Always set trust proxy if in production
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
 
 // Health check endpoint
 app.get("/health", async (req, res) => {
