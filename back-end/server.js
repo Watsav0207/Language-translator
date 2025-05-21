@@ -17,22 +17,30 @@ const isProduction = process.env.NODE_ENV === 'production';
 // Improved MongoDB connection
 const connectDB = async () => {
   try {
-    // Encode the password properly
-    const mongoUrl = process.env.MONGO_URL || 
-      'mongodb+srv://admin:Ar%40020407@cluster0.y33awui.mongodb.net/translatorDB?retryWrites=true&w=majority';
-    
+    // Get the MongoDB URI from environment variables
+    const mongoUrl = process.env.MONGO_URL;
+
+    // If no MongoDB URI is provided, log an error and exit
+    if (!mongoUrl) {
+      console.error("MONGO_URL environment variable is not set");
+      process.exit(1);
+    }
+
     await mongoose.connect(mongoUrl, {
+      useNewUrlParser: true,        // Add this option
+      useUnifiedTopology: true,     // Add this option
       retryWrites: true,
       w: 'majority'
     });
     
-    console.log("Connected to MongoDB!");
+    console.log("Connected to MongoDB successfully!");
   } catch (err) {
     console.error("MongoDB connection error:", err.message);
+    // Print more detailed error information
+    console.error("Error details:", err);
     process.exit(1);
   }
 };
-
 // Connect to DB first
 connectDB();
 
