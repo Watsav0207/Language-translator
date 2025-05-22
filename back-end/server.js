@@ -15,16 +15,17 @@ const PORT = process.env.PORT || 10000;
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Improved MongoDB connection
+
 const connectDB = async () => {
   try {
     // Hard-coded connection with proper encoding for urgent fix
-    // Using encodeURIComponent to handle the @ in the password properly
     const username = 'admin';
     const password = encodeURIComponent('Ar@020407');
     const cluster = 'cluster0.y33awui.mongodb.net';
     const dbName = 'translatorDB';
     
-    const mongoUrl = `mongodb+srv://admin:Ar@020407@cluster0.y33awui.mongodb.net/translatorDB?retryWrites=true&w=majority`;
+    // USE THE ENCODED PASSWORD VARIABLE HERE!
+    const mongoUrl = `mongodb+srv://${username}:${password}@${cluster}/${dbName}?retryWrites=true&w=majority`;
     
     console.log("Attempting MongoDB connection...");
     
@@ -37,7 +38,6 @@ const connectDB = async () => {
     process.exit(1);
   }
 };
-
 // Connect to DB first
 connectDB();
 
