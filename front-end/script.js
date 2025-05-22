@@ -72,21 +72,26 @@ async function startTranslation() {
     // Show loading state
     showLoading(true);
     
-    // Make request to your translation service
-    const response = await fetch("https://nllb-translator-service.onrender.com/process", {
+    // Try LibreTranslate as an alternative
+    const response = await fetch("https://libretranslate.de/translate", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ sentence: inputText }),
+      body: JSON.stringify({ 
+        q: inputText,
+        source: "en",
+        target: "te",
+        format: "text"
+      }),
     });
     
     const data = await response.json();
     
     if (response.ok) {
       // Success - display the translation
-      const originalText = data.original_sentence || inputText;
-      const translatedText = data.processed_sentence || "Translation failed";
+      const originalText = inputText;
+      const translatedText = data.translatedText || "Translation failed";
       
       displayTranslation(originalText, translatedText);
       
