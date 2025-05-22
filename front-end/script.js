@@ -8,66 +8,103 @@ if (window.location.origin.includes('your-render-app.onrender.com')) {
   };
 }
 
-function startTranslation() {
-  const inputText = document.getElementById("text-input").value.trim();
+// Helper function to show loading state
+function showLoading(isLoading) {
+  const button = document.getElementById("translate-btn");
   const translatedTextElement = document.getElementById("translated-text");
+  
+  if (isLoading) {
+    button.textContent = "Translating...";
+    button.disabled = true;
+    translatedTextElement.value = "Translating...";
+  } else {
+    button.textContent = "Translate";
+    button.disabled = false;
+  }
+}
+
+// Helper function to display translation
+function displayTranslation(original, translated) {
+  document.getElementById("text-input").value = original;
+  document.getElementById("translated-text").value = translated;
+}
+
+// Helper function to show errors
+function showError(message) {
+  const translatedTextElement = document.getElementById("translated-text");
+  translatedTextElement.value = `Error: ${message}`;
+  
+  // Also show an alert for better user feedback
+  alert(message);
+}
+
+// Helper function to check if user is logged in
+function isUserLoggedIn() {
+  // This will be determined by checking if we can get current user info
+  return document.getElementById("username-display").textContent !== "Hello, Guest";
+}
+
+// Helper function to save translation to history
+async function saveTranslationToHistory(original, translated) {
+  try {
+    await fetch('/save-translation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ english: original, telugu: translated })
+    });
+  } catch (error) {
+    console.error('Error saving translation to history:', error);
+  }
+}
+
+// Main translation function - replaces the old startTranslation()
+async function startTranslation() {
+  const inputText = document.getElementById("text-input").value.trim();
 
   if (!inputText) {
-    translatedTextElement.value = "";
+    document.getElementById("translated-text").value = "";
     return;
   }
 
-  // Split input by newlines
-  const inputLines = inputText.split('\n');
-  
-  // Show loading state
-  translatedTextElement.value = "Translating...";
-
-  // Process each line separately
-  const translationPromises = inputLines.map(line => {
-    if (!line.trim()) return Promise.resolve(""); // Preserve empty lines
+  try {
+    // Show loading state
+    showLoading(true);
     
-    
-    return fetch("https://language-translator-ttbp.onrender.com/process", {
+    // Make request to your translation service
+    const response = await fetch("https://nllb-translator-service.onrender.com/process", {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "true" 
       },
-      body: JSON.stringify({ sentence: line })
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    })
-    .then(data => {
-      return data.processed_sentence || "Translation failed";
-    })
-    .catch(error => {
-      console.error("Translation Error:", error);
-      return "Translation error occurred";
+      body: JSON.stringify({ sentence: inputText }),
     });
-  });
-
-  // Wait for all translations to complete
-  Promise.all(translationPromises)
-    .then(translatedLines => {
-      // Combine translated lines with newlines
-      const combinedTranslation = translatedLines.join('\n');
-      translatedTextElement.value = combinedTranslation;
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      // Success - display the translation
+      const originalText = data.original_sentence || inputText;
+      const translatedText = data.processed_sentence || "Translation failed";
       
-      // Save to history if translation was successful
-      if (combinedTranslation && !combinedTranslation.includes("Translation failed") && 
-          !combinedTranslation.includes("Translation error occurred")) {
-        saveTranslation(inputText, combinedTranslation);
+      displayTranslation(originalText, translatedText);
+      
+      // Save to user's history (if logged in)
+      if (isUserLoggedIn()) {
+        await saveTranslationToHistory(originalText, translatedText);
       }
-    })
-    .catch(error => {
-      console.error("Error in translation process:", error);
-      translatedTextElement.value = "Translation error occurred";
-    });
+    } else {
+      // Error from the API
+      showError(data.error || "Translation failed");
+    }
+  } catch (error) {
+    // Network or other errors
+    console.error("Translation error:", error);
+    showError("Translation service unavailable. Please try again.");
+  } finally {
+    showLoading(false);
+  }
 }
 
 function validateLogin() {
@@ -199,7 +236,7 @@ function saveCurrentTranslation() {
   const english = document.getElementById('text-input').value.trim();
   const telugu = document.getElementById('translated-text').value.trim();
 
-  if (!english || !telugu || telugu === "Translating..." || telugu === "Translation failed") {
+  if (!english || !telugu || telugu === "Translating..." || telugu.includes("Error:") || telugu === "Translation failed") {
     alert("Please translate something first before saving");
     return;
   }
