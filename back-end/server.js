@@ -15,8 +15,6 @@ const PORT = process.env.PORT || 10000;
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Improved MongoDB connection
-// Replace the connectDB function in server.js with this code
-
 const connectDB = async () => {
   try {
     // Hard-coded connection with proper encoding for urgent fix
@@ -26,7 +24,7 @@ const connectDB = async () => {
     const cluster = 'cluster0.y33awui.mongodb.net';
     const dbName = 'translatorDB';
     
-    const mongoUrl = `mongodb+srv://${username}:${password}@${cluster}/${dbName}?retryWrites=true&w=majority`;
+    const mongoUrl = `mongodb+srv://admin:Ar@020407@cluster0.y33awui.mongodb.net/translatorDB?retryWrites=true&w=majority`;
     
     console.log("Attempting MongoDB connection...");
     
@@ -39,6 +37,7 @@ const connectDB = async () => {
     process.exit(1);
   }
 };
+
 // Connect to DB first
 connectDB();
 
@@ -78,26 +77,27 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.resolve(__dirname, "../front-end")));
 
-// Session configuration - Fixed MongoStore
+// Session configuration
 app.use(
   session({
     secret: process.env.SESSION_SECRET || 'fallback_secret_please_change',
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
-      client: mongoose.connection.getClient(), // Reuse existing connection
+      client: mongoose.connection.getClient(),
       ttl: 14 * 24 * 60 * 60,
       autoRemove: 'native'
     }),
     cookie: {
       secure: isProduction,
-      maxAge: 1000 * 60 * 60,
+      maxAge: 1000 * 60 * 60 * 24, // Extended to 24 hours
       sameSite: isProduction ? 'none' : 'lax',
       httpOnly: true
     }
   })
 );
 
+// Always set trust proxy if in production
 if (isProduction) {
   app.set('trust proxy', 1);
 }
@@ -125,30 +125,33 @@ function isAuthenticated(req, res, next) {
   });
 }
 
-// Routes
+// Routes - Root route always redirects to login first
 app.get("/", (req, res) => {
-  // Check if user is already logged in
-  if (req.session && req.session.user && req.session.user.username) {
-    return res.redirect("/home");
-  }
-  // If not logged in, redirect to login page
   res.redirect("/login");
 });
 
-// Also make sure this route exists to serve your home page:
+// Protected home route - requires authentication
 app.get("/home", isAuthenticated, (req, res) => {
   res.sendFile(path.resolve(__dirname, "../front-end/index.html"));
 });
 
+// Login page route
 app.get("/login", (req, res) => {
-  if (req.session.user) return res.redirect("/home");
+  if (req.session.user) {
+    return res.redirect("/home");
+  }
   res.sendFile(path.resolve(__dirname, "../front-end/login.html"));
 });
 
+// Signup page route
 app.get("/signup", (req, res) => {
-  if (req.session.user) return res.redirect("/home");
+  if (req.session.user) {
+    return res.redirect("/home");
+  }
   res.sendFile(path.resolve(__dirname, "../front-end/signup.html"));
 });
+
+// Signup route
 app.post("/signup", async (req, res) => {
   const { username, password } = req.body;
   
@@ -186,6 +189,7 @@ app.post("/signup", async (req, res) => {
   }
 });
 
+// Login route
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
   
@@ -241,6 +245,7 @@ app.post("/login", async (req, res) => {
   }
 });
 
+// Current user route
 app.get("/current-user", (req, res) => {
   if (req.session.user) {
     res.json({ 
@@ -255,6 +260,7 @@ app.get("/current-user", (req, res) => {
   }
 });
 
+// Logout route
 app.post("/logout", (req, res) => {
   req.session.destroy((err) => {
     if (err) {
@@ -271,30 +277,152 @@ app.post("/logout", (req, res) => {
   });
 });
 
-// Error handling middleware
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || 'fallback_secret_please_change',
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({
-      client: mongoose.connection.getClient(),
-      ttl: 14 * 24 * 60 * 60,
-      autoRemove: 'native'
-    }),
-    cookie: {
-      secure: isProduction,
-      maxAge: 1000 * 60 * 60 * 24, // Extended to 24 hours
-      sameSite: isProduction ? 'none' : 'lax',
-      httpOnly: true
-    }
-  })
-);
+// Translation functionality routes
+app.post("/save-translation", isAuthenticated, async (req, res) => {
+  const { english, telugu } = req.body;
+  
+  if (!english || !telugu) {
+    return res.status(400).json({ message: "Both English and Telugu text are required" });
+  }
 
-// Always set trust proxy if in production
-if (isProduction) {
-  app.set('trust proxy', 1);
-}
+  try {
+    const user = await User.findOne({ username: req.session.user.username });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.translations.push({ english, telugu });
+    await user.save();
+    
+    res.json({ message: "Translation saved to history" });
+  } catch (err) {
+    console.error("Error saving translation:", err);
+    res.status(500).json({ message: "Error saving translation" });
+  }
+});
+
+app.post("/save-to-saved", isAuthenticated, async (req, res) => {
+  const { english, telugu } = req.body;
+  
+  if (!english || !telugu) {
+    return res.status(400).json({ message: "Both English and Telugu text are required" });
+  }
+
+  try {
+    const user = await User.findOne({ username: req.session.user.username });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.savedTranslations.push({ english, telugu });
+    await user.save();
+    
+    res.json({ message: "Translation saved to saved list" });
+  } catch (err) {
+    console.error("Error saving translation:", err);
+    res.status(500).json({ message: "Error saving translation" });
+  }
+});
+
+app.get("/history", isAuthenticated, async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.session.user.username });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    res.json({ translations: user.translations.reverse() });
+  } catch (err) {
+    console.error("Error fetching history:", err);
+    res.status(500).json({ message: "Error fetching history" });
+  }
+});
+
+app.get("/saved-translations", isAuthenticated, async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.session.user.username });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    res.json({ savedTranslations: user.savedTranslations.reverse() });
+  } catch (err) {
+    console.error("Error fetching saved translations:", err);
+    res.status(500).json({ message: "Error fetching saved translations" });
+  }
+});
+
+app.delete("/delete-history-item", isAuthenticated, async (req, res) => {
+  const { index } = req.body;
+  
+  try {
+    const user = await User.findOne({ username: req.session.user.username });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.translations.splice(index, 1);
+    await user.save();
+    
+    res.json({ message: "History item deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting history item:", err);
+    res.status(500).json({ message: "Error deleting history item" });
+  }
+});
+
+app.delete("/delete-saved-item", isAuthenticated, async (req, res) => {
+  const { index } = req.body;
+  
+  try {
+    const user = await User.findOne({ username: req.session.user.username });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.savedTranslations.splice(index, 1);
+    await user.save();
+    
+    res.json({ message: "Saved item deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting saved item:", err);
+    res.status(500).json({ message: "Error deleting saved item" });
+  }
+});
+
+app.delete("/delete-history", isAuthenticated, async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.session.user.username });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.translations = [];
+    await user.save();
+    
+    res.json({ message: "History deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting history:", err);
+    res.status(500).json({ message: "Error deleting history" });
+  }
+});
+
+app.delete("/delete-saved", isAuthenticated, async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.session.user.username });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.savedTranslations = [];
+    await user.save();
+    
+    res.json({ message: "Saved translations deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting saved translations:", err);
+    res.status(500).json({ message: "Error deleting saved translations" });
+  }
+});
 
 // Health check endpoint
 app.get("/health", async (req, res) => {
@@ -312,6 +440,16 @@ app.get("/health", async (req, res) => {
       error: err.message
     });
   }
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ 
+    message: "Something went wrong!",
+    error: err.message,
+    stack: isProduction ? undefined : err.stack
+  });
 });
 
 // Start server
