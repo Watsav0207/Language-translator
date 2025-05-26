@@ -78,7 +78,6 @@ const User = mongoose.model("users", UserSchema);
 // Middleware
 app.use(cookieParser());
 app.use(express.json());
-app.use(csurf());
 app.use(helmet());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.resolve(__dirname, "../front-end")));
@@ -117,8 +116,24 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+
+const csrfProtection = csurf({
+  cookie: {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax'
+  }
+});
+
 // Custom logger
 app.use(logger);
+app.use('/login', csrfProtection);
+app.use('/signup', csrfProtection);
+app.use('/home', csrfProtection);
+
+app.get('/csrf-token', csrfProtection, (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+});
 
 // Authentication middleware
 function isAuthenticated(req, res, next) {
