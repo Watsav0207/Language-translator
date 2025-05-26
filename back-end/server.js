@@ -7,6 +7,9 @@ const rateLimit = require("express-rate-limit");
 const logger = require("./logger");
 const mongoose = require("mongoose");
 const MongoStore = require('connect-mongo');
+const csurf = require('csurf');
+const helmet = require('helmet');
+
 require("dotenv").config();
 
 // Express app setup
@@ -15,22 +18,22 @@ const PORT = process.env.PORT || 10000;
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Improved MongoDB connection
+require('dotenv').config();
 
 const connectDB = async () => {
   try {
-    // Hard-coded connection with proper encoding for urgent fix
-    const username = 'admin';
-    const password = encodeURIComponent('Ar@020407');
-    const cluster = 'cluster0.y33awui.mongodb.net';
-    const dbName = 'translatorDB';
-    
-    // USE THE ENCODED PASSWORD VARIABLE HERE!
-    const mongoUrl = `mongodb+srv://${username}:${password}@${cluster}/${dbName}?retryWrites=true&w=majority`;
-    
+    const username = process.env.MONGO_USERNAME;
+    const password = encodeURIComponent(process.env.MONGO_PASSWORD);
+    const cluster = process.env.MONGO_CLUSTER;
+    const dbName = process.env.MONGO_DB;
+    const options = process.env.MONGO_OPTIONS || '';
+
+    const mongoUrl = `mongodb+srv://${username}:${password}@${cluster}/${dbName}?${options}`;
+
     console.log("Attempting MongoDB connection...");
-    
+
     await mongoose.connect(mongoUrl);
-    
+
     console.log("Connected to MongoDB successfully!");
   } catch (err) {
     console.error("MongoDB connection error:", err.message);
@@ -38,6 +41,9 @@ const connectDB = async () => {
     process.exit(1);
   }
 };
+
+module.exports = connectDB;
+
 // Connect to DB first
 connectDB();
 
@@ -74,6 +80,8 @@ const User = mongoose.model("users", UserSchema);
 // Middleware
 app.use(cookieParser());
 app.use(express.json());
+app.use(csurf());
+app.use(helmet());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.resolve(__dirname, "../front-end")));
 

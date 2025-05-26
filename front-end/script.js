@@ -39,9 +39,19 @@ function showError(message) {
 }
 
 // Helper function to check if user is logged in
+function getCookie(name) {
+  const cookies = document.cookie.split(';').map(c => c.trim());
+  for (const cookie of cookies) {
+    if (cookie.startsWith(name + '=')) {
+      return cookie.substring(name.length + 1);
+    }
+  }
+  return null;
+}
+
 function isUserLoggedIn() {
-  // This will be determined by checking if we can get current user info
-  return document.getElementById("username-display").textContent !== "Hello, Guest";
+  const sessionCookie = getCookie('connect.sid');
+  return sessionCookie !== null && sessionCookie !== '';
 }
 
 // Helper function to save translation to history
