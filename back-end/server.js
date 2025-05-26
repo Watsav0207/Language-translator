@@ -7,28 +7,20 @@ const rateLimit = require("express-rate-limit");
 const logger = require("./logger");
 const mongoose = require("mongoose");
 const MongoStore = require('connect-mongo');
-const csurf = require('csurf');
-const helmet = require('helmet');
-
-
 require("dotenv").config();
 
-// Express app setup
 const app = express();
 const PORT = process.env.PORT || 10000;
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Improved MongoDB connection
 
 const connectDB = async () => {
   try {
-    // Hard-coded connection with proper encoding for urgent fix
     const username = 'admin';
     const password = encodeURIComponent('Ar@020407');
     const cluster = 'cluster0.y33awui.mongodb.net';
     const dbName = 'translatorDB';
     
-    // USE THE ENCODED PASSWORD VARIABLE HERE!
     const mongoUrl = `mongodb+srv://${username}:${password}@${cluster}/${dbName}?retryWrites=true&w=majority`;
     
     console.log("Attempting MongoDB connection...");
@@ -42,10 +34,8 @@ const connectDB = async () => {
     process.exit(1);
   }
 };
-// Connect to DB first
 connectDB();
 
-// Mongoose schema and model
 const UserSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -75,14 +65,11 @@ const UserSchema = new mongoose.Schema({
 
 const User = mongoose.model("users", UserSchema);
 
-// Middleware
 app.use(cookieParser());
 app.use(express.json());
-app.use(helmet());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.resolve(__dirname, "../front-end")));
 
-// Session configuration
 app.use(
   session({
     secret: process.env.SESSION_SECRET || 'fallback_secret_please_change',
@@ -95,19 +82,18 @@ app.use(
     }),
     cookie: {
       secure: isProduction,
-      maxAge: 1000 * 60 * 60 * 24, // Extended to 24 hours
+      maxAge: 1000 * 60 * 60 * 24, //24 hours expire date
       sameSite: isProduction ? 'none' : 'lax',
       httpOnly: true
     }
   })
 );
 
-// Always set trust proxy if in production
 if (isProduction) {
   app.set('trust proxy', 1);
 }
 
-// Rate limiting
+//rate limiting ip's to prevent dos attacks.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: isProduction ? 100 : 1000,
@@ -116,26 +102,9 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-
-const csrfProtection = csurf({
-  cookie: {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax'
-  }
-});
-
-// Custom logger
+// Custom logger to log all requests from user to debug.
 app.use(logger);
-app.use('/login', csrfProtection);
-app.use('/signup', csrfProtection);
-app.use('/home', csrfProtection);
 
-app.get('/csrf-token', csrfProtection, (req, res) => {
-  res.json({ csrfToken: req.csrfToken() });
-});
-
-// Authentication middleware
 function isAuthenticated(req, res, next) {
   if (req.session.user && req.session.user.username) {
     return next();
@@ -146,17 +115,14 @@ function isAuthenticated(req, res, next) {
   });
 }
 
-// Routes - Root route always redirects to login first
 app.get("/", (req, res) => {
   res.redirect("/login");
 });
 
-// Protected home route - requires authentication
 app.get("/home", isAuthenticated, (req, res) => {
   res.sendFile(path.resolve(__dirname, "../front-end/index.html"));
 });
 
-// Login page route
 app.get("/login", (req, res) => {
   if (req.session.user) {
     return res.redirect("/home");
@@ -164,7 +130,6 @@ app.get("/login", (req, res) => {
   res.sendFile(path.resolve(__dirname, "../front-end/login.html"));
 });
 
-// Signup page route
 app.get("/signup", (req, res) => {
   if (req.session.user) {
     return res.redirect("/home");
@@ -172,7 +137,6 @@ app.get("/signup", (req, res) => {
   res.sendFile(path.resolve(__dirname, "../front-end/signup.html"));
 });
 
-// Signup route
 app.post("/signup", async (req, res) => {
   const { username, password } = req.body;
   
@@ -210,7 +174,6 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// Login route
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
   
@@ -228,13 +191,11 @@ app.post("/login", async (req, res) => {
     console.log("User found:", user ? "yes" : "no");
 
     if (user && await bcrypt.compare(password, user.password)) {
-      // Set the session data
       req.session.user = { 
         username: user.username,
         id: user._id.toString()
       };
       
-      // Save the session explicitly
       req.session.save((err) => {
         if (err) {
           console.error("Session save error:", err);
@@ -266,7 +227,6 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// Current user route
 app.get("/current-user", (req, res) => {
   if (req.session.user) {
     res.json({ 
@@ -281,7 +241,6 @@ app.get("/current-user", (req, res) => {
   }
 });
 
-// Logout route
 app.post("/logout", (req, res) => {
   req.session.destroy((err) => {
     if (err) {
@@ -298,7 +257,6 @@ app.post("/logout", (req, res) => {
   });
 });
 
-// Translation functionality routes
 app.post("/save-translation", isAuthenticated, async (req, res) => {
   const { english, telugu } = req.body;
   
@@ -462,7 +420,6 @@ app.get("/health", async (req, res) => {
     });
   }
 });
-
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -479,7 +436,6 @@ const server = app.listen(PORT, () => {
   console.log(`Environment: ${isProduction ? 'Production' : 'Development'}`);
 });
 
-// Error handlers
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled Rejection:', err);
   server.close(() => process.exit(1));
