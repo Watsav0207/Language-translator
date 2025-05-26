@@ -18,7 +18,6 @@ const PORT = process.env.PORT || 10000;
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Improved MongoDB connection
-const mongoose = require("mongoose");
 
 const connectDB = async () => {
   try {
