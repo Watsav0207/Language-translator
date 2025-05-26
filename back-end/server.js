@@ -17,21 +17,44 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 const isProduction = process.env.NODE_ENV === 'production';
 
+// Debug environment variables
+console.log("Environment check:");
+console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("MONGO_USERNAME:", process.env.MONGO_USERNAME ? "Set" : "Not set");
+console.log("MONGO_PASSWORD:", process.env.MONGO_PASSWORD ? "Set" : "Not set");
+console.log("MONGO_CLUSTER:", process.env.MONGO_CLUSTER ? "Set" : "Not set");
+console.log("MONGO_DB:", process.env.MONGO_DB ? "Set" : "Not set");
+console.log("SESSION_SECRET:", process.env.SESSION_SECRET ? "Set" : "Not set");
+
 // Improved MongoDB connection
 const connectDB = async () => {
   try {
-    const username = process.env.MONGO_USERNAME;
-    const password = encodeURIComponent(process.env.MONGO_PASSWORD);
-    const cluster = process.env.MONGO_CLUSTER;
-    const dbName = process.env.MONGO_DB;
-    const options = process.env.MONGO_OPTIONS || '';
+    // Use environment variables with fallbacks (TEMPORARY - set proper env vars in Render)
+    const username = process.env.MONGO_USERNAME || "admin";
+    const password = process.env.MONGO_PASSWORD || "Ar@020407";
+    const cluster = process.env.MONGO_CLUSTER || "cluster0.y33awui.mongodb.net";
+    const dbName = process.env.MONGO_DB || "translatorDB";
+    const options = process.env.MONGO_OPTIONS || 'retryWrites=true&w=majority';
+
+    console.log("MongoDB config check:");
+    console.log("Username:", username ? "✓" : "✗");
+    console.log("Password:", password ? "✓" : "✗");
+    console.log("Cluster:", cluster ? "✓" : "✗");
+    console.log("Database:", dbName ? "✓" : "✗");
 
     // Validate inputs to avoid 'undefined' errors
     if (!username || !password || !cluster || !dbName) {
+      console.error("Missing environment variables:");
+      console.error("MONGO_USERNAME:", username);
+      console.error("MONGO_PASSWORD:", password ? "[HIDDEN]" : "undefined");
+      console.error("MONGO_CLUSTER:", cluster);
+      console.error("MONGO_DB:", dbName);
       throw new Error("Missing MongoDB configuration in environment variables.");
     }
 
-    const mongoUrl = `mongodb+srv://${username}:${password}@${cluster}/${dbName}?${options}`;
+    const encodedPassword = encodeURIComponent(password);
+
+    const mongoUrl = `mongodb+srv://${username}:${encodedPassword}@${cluster}/${dbName}?${options}`;
 
     console.log("Attempting MongoDB connection...");
 
