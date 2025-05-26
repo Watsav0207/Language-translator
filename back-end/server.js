@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 10000;
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Improved MongoDB connection
-require('dotenv').config();
+const mongoose = require("mongoose");
 
 const connectDB = async () => {
   try {
@@ -27,6 +27,11 @@ const connectDB = async () => {
     const cluster = process.env.MONGO_CLUSTER;
     const dbName = process.env.MONGO_DB;
     const options = process.env.MONGO_OPTIONS || '';
+
+    // Validate inputs to avoid 'undefined' errors
+    if (!username || !password || !cluster || !dbName) {
+      throw new Error("Missing MongoDB configuration in environment variables.");
+    }
 
     const mongoUrl = `mongodb+srv://${username}:${password}@${cluster}/${dbName}?${options}`;
 
@@ -43,9 +48,6 @@ const connectDB = async () => {
 };
 
 module.exports = connectDB;
-
-// Connect to DB first
-connectDB();
 
 // Mongoose schema and model
 const UserSchema = new mongoose.Schema({
